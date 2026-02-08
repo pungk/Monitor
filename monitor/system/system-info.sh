@@ -11,15 +11,25 @@ IS_ROOT=0
 [[ $EUID -eq 0 ]] && IS_ROOT=1
 
 if [[ $IS_ROOT -eq 0 ]]; then
-  echo -e "${UYELLOW}Warning:${NC} running without root privileges."
-  echo -e "${UYELLOW}Some hardware details may be unavailable.${NC}"
-  printf "\n"
+    echo -e "${UYELLOW}Warning:${NC} running without root privileges."
+    echo -e "${UYELLOW}Some hardware details may be unavailable.${NC}"
+    printf "\n"
 fi
 
 if [[ $IS_ROOT -eq 1 ]] && have_cmd dmidecode; then
-  RAMSLOTS=$(dmidecode -t memory 2>/dev/null | grep -i "Size:" | wc -l)
+    RAMSLOTS=$(dmidecode -t memory 2>/dev/null | grep -i "Size:" | wc -l)
 else
-  RAMSLOTS="N/A (run as root)"
+    RAMSLOTS="N/A (run as root)"
+fi
+
+if [[ $IS_ROOT -eq 1 ]] && have_cmd smartctl; then
+    HDDMODEL=$(smartctl -i /dev/sda | grep "Device Model" | awk '{print $3, $4}')
+    HDDTYPE=$(smartctl -i /dev/sda | grep "Model Family" | awk '{print $3, $4, $5}')
+    HDDCAPACITY=$(smartctl -i /dev/sda | grep "User Capacity" | awk '{print $5, $6}')
+else
+    HDDMODEL="N/A (run as root)"
+    HDDTYPE="N/A (run as root)"
+    HDDCAPACITY="N/A (run as root)"
 fi
 
 set -o pipefail
