@@ -6,33 +6,16 @@
 # Version: 1.1
 # Updated: 08 Feb 2026
 
-IS_ROOT=0
-
-[[ $EUID -eq 0 ]] && IS_ROOT=1
-
-if [[ $IS_ROOT -eq 0 ]]; then
-    echo -e "${UYELLOW}Warning:${NC} running without root privileges."
-    echo -e "${UYELLOW}Some hardware details may be unavailable.${NC}"
-    printf "\n"
-fi
-
-if [[ $IS_ROOT -eq 1 ]] && have_cmd dmidecode; then
-    RAMSLOTS=$(dmidecode -t memory 2>/dev/null | grep -i "Size:" | wc -l)
-else
-    RAMSLOTS="N/A (run as root)"
-fi
-
-if [[ $IS_ROOT -eq 1 ]] && have_cmd smartctl; then
-    HDDMODEL=$(smartctl -i /dev/sda | grep "Device Model" | awk '{print $3, $4}')
-    HDDTYPE=$(smartctl -i /dev/sda | grep "Model Family" | awk '{print $3, $4, $5}')
-    HDDCAPACITY=$(smartctl -i /dev/sda | grep "User Capacity" | awk '{print $5, $6}')
-else
-    HDDMODEL="N/A (run as root)"
-    HDDTYPE="N/A (run as root)"
-    HDDCAPACITY="N/A (run as root)"
-fi
-
+#smarter error logging
 set -o pipefail
+
+# root check
+if [[ $EUID -ne 0 ]]; then
+    echo "ERROR: This script must be run as root."
+    echo
+    echo "Please run it directly as root"
+    exit 1
+fi
 
 #use color by default
 USE_COLOR=1
@@ -87,6 +70,9 @@ USEDMEM=$(free | grep "Mem:"  | awk '{print $2}')
 AVAILMEM=$(cat /proc/meminfo | grep MemAvailable | cut -f 2 -d ":" | awk '{$1=$1}1')
 RAMSLOTS=$(sudo dmidecode -t memory | grep -i size | wc -l)
 INSTALLEDRAM=$(sudo dmidecode -t memory | grep -i size)
+HDDMODEL=$(smartctl -i /dev/sda | grep "Device Model" | awk '{print $3, $4}')
+HDDTYPE=$(smartctl -i /dev/sda | grep "Model Family" | awk '{print $3, $4, $5}')
+HDDCAPACITY=$(smartctl -i /dev/sda | grep "User Capacity" | awk '{print $5, $6}')
 HDDUSED=$(df -H --total | grep -i total | awk '{print $3}')
 HDDAVAIL=$(df -H --total | grep -i total | awk '{print $4}')
 DOCKERIMAGES=$(docker ps -q | wc -l)
