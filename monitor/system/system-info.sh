@@ -6,6 +6,22 @@
 # Version: 1.1
 # Updated: 08 Feb 2026
 
+IS_ROOT=0
+
+[[ $EUID -eq 0 ]] && IS_ROOT=1
+
+if [[ $IS_ROOT -eq 0 ]]; then
+  echo -e "${UYELLOW}Warning:${NC} running without root privileges."
+  echo -e "${UYELLOW}Some hardware details may be unavailable.${NC}"
+  printf "\n"
+fi
+
+if [[ $IS_ROOT -eq 1 ]] && have_cmd dmidecode; then
+  RAMSLOTS=$(dmidecode -t memory 2>/dev/null | grep -i "Size:" | wc -l)
+else
+  RAMSLOTS="N/A (run as root)"
+fi
+
 set -o pipefail
 
 #use color by default
