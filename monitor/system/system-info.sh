@@ -1,16 +1,32 @@
 #!/usr/bin/env bash
 
-#System Info script written by costin.serbanoiu@gmail.com
-#15Jan2026
-#Version 1.0
+# system-info.sh
+# Portable system summary script
+# Author: costin.serbanoiu@gmail.com
+# Version: 1.1
+# Updated: 08 Feb 2026
 
-#setting text options
-RED='\033[0;31m' #Red color text
-GREEN='\033[0;32m' #Green color text
-NC='\033[0m' # No Color
-BWHITE='\033[1;37m' #Bold White text
-UWHITE='\033[4;37m' #White underlined text
-UYELLOW='\033[4;33m' #Yellow underlined text
+set -o pipefail
+
+#use color by default
+USE_COLOR=1
+
+#run script with --no-color option
+if [[ "${1:-}" == "--no-color" ]]; then
+    USE_COLOR=0
+fi
+
+
+#setting text color options
+if [[ $USE_COLOR -eq 0 ]]; then
+    RED='\033[0;31m' #Red color text
+    GREEN='\033[0;32m' #Green color text
+    NC='\033[0m' # No Color
+    BWHITE='\033[1;37m' #Bold White text
+    UWHITE='\033[4;37m' #White underlined text
+    UYELLOW='\033[4;33m' #Yellow underlined text
+fi
+
 
 
 printf %"s\n"
