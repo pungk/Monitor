@@ -18,7 +18,7 @@ fi
 
 
 #setting text color options
-if [[ $USE_COLOR -eq 0 ]]; then
+if [[ $USE_COLOR -eq 1 ]]; then
     RED='\033[0;31m' #Red color text
     GREEN='\033[0;32m' #Green color text
     NC='\033[0m' # No Color
