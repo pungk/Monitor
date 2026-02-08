@@ -27,6 +27,17 @@ if [[ $USE_COLOR -eq 1 ]]; then
     UYELLOW='\033[4;33m' #Yellow underlined text
 fi
 
+#create functions to make script quieta and check for path
+
+#check program exists
+have_cmd() {
+  command -v "$1" >/dev/null 2>&1
+}
+
+#if command does not exist print N/A and not hang
+safe_run() {
+  "$@" 2>/dev/null || echo "N/A"
+}
 
 
 printf %"s\n"
