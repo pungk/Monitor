@@ -17,19 +17,43 @@ if [[ ! -d .git ]]; then
   exit 1
 fi
 
-# Store state INSIDE .git so git clean -fd will not delete it
+# Store state inside .git so git clean won't delete it
 STATE_DIR="$REPO_DIR/.git/monitor_state"
-LOG_FILE="$STATE_DIR/update_scripts.log"
+
+LOG_DIR="$REPO_DIR/logs"
 ROLLBACK_FILE="$STATE_DIR/rollback_commit"
 
-mkdir -p "$STATE_DIR"
+STATE_LOG="$STATE_DIR/state.log"
+PUBLIC_LOG="$LOG_DIR/update_scripts.log"
+
+mkdir -p "$STATE_DIR" "$LOG_DIR"
 
 ts() { date "+%Y-%m-%d %H:%M:%S"; }
+
+
+rotate_logs_if_needed() {
+  # If log file is older than 1 day, archive it
+  local archive_date
+  archive_date="$(date +%Y-%m-%d)"
+
+  for f in "$STATE_LOG" "$PUBLIC_LOG"; do
+    if [[ -f "$f" ]] && find "$f" -mtime +0 -print -quit | grep -q .; then
+      local dir base archived
+      dir="$(dirname "$f")"
+      base="$(basename "$f" .log)"
+      archived="$dir/${base}_$archive_date.log"
+      mv "$f" "$archived"
+    fi
+  done
+}
+
+rotate_logs_if_needed
 
 log() {
   local level="$1"; shift
   local msg="$*"
-  echo "$(ts) [$level] $msg" | tee -a "$LOG_FILE"
+  echo "$(ts) [$level] $msg" | tee -a "$STATE_LOG" "$PUBLIC_LOG" >/dev/null
+  echo "$(ts) [$level] $msg"
 }
 
 die() {
@@ -52,6 +76,7 @@ save_rollback_point() {
   log "INFO" "Saved rollback commit: $commit"
 }
 
+
 do_update() {
   log "INFO" "Starting update to branch '$BRANCH' (FORCE)."
   log "WARN" "This will overwrite ALL local changes and remove untracked files."
@@ -66,7 +91,7 @@ do_update() {
   git reset --hard FETCH_HEAD || die "git reset failed."
 
   log "INFO" "Removing untracked files (excluding .git)..."
-  git clean -fd || die "git clean failed."
+  git clean -fd -e logs/ || die "git clean failed."
 
   log "INFO" "Update complete. Current commit: $(git rev-parse --short HEAD 2>/dev/null || echo UNKNOWN)"
 }
