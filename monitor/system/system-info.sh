@@ -151,32 +151,35 @@ else
 fi
 
 #gpu info
-if have_cmd lspci; then
-    GPU=$(lspci | grep -iE 'vga|3d' \
-        | head -n 1 \
-        | sed -E 's/^.*: //' \
-        | sed -E 's/ \(rev.*\)//')
-else
-    GPU="N/A"
-fi
+GPU="N/A"
+GPU_TYPE="N/A"
 
-# Detect GPU type
-    if echo "$GPU_RAW" | grep -qiE 'intel'; then
-        GPU_TYPE="Integrated"
-    elif echo "$GPU_RAW" | grep -qiE 'nvidia'; then
-        GPU_TYPE="Dedicated"
-    elif echo "$GPU_RAW" | grep -qiE 'amd|ati'; then
-        if echo "$GPU_RAW" | grep -qiE 'rx|radeon pro|firepro'; then
-            GPU_TYPE="Dedicated"
-        else
+if have_cmd lspci; then
+    GPU_RAW="$(lspci | grep -iE 'vga|3d' | head -n 1)"
+
+    if [[ -n "$GPU_RAW" ]]; then
+        GPU="$(echo "$GPU_RAW" \
+            | sed -E 's/^.*: //' \
+            | sed -E 's/ \(rev.*\)//')"
+
+        # Detect GPU type (heuristic)
+        if echo "$GPU_RAW" | grep -qiE 'intel'; then
             GPU_TYPE="Integrated"
+        elif echo "$GPU_RAW" | grep -qiE 'nvidia'; then
+            GPU_TYPE="Dedicated"
+        elif echo "$GPU_RAW" | grep -qiE 'amd|ati'; then
+            if echo "$GPU_RAW" | grep -qiE 'rx|radeon pro|firepro'; then
+                GPU_TYPE="Dedicated"
+            else
+                GPU_TYPE="Integrated"
+            fi
+        else
+            GPU_TYPE="Unknown"
         fi
     else
-        GPU_TYPE="Unknown"
+        GPU="N/A"
+        GPU_TYPE="N/A"
     fi
-else
-    GPU="N/A"
-    GPU_TYPE="N/A"
 fi
 ########### run ############
 
