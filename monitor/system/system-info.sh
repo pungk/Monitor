@@ -55,28 +55,46 @@ printf %"s\n"
 printf %"s\n"
 
 #variables used for info
-cpu_model=$(lscpu | grep 'Model name' | cut -f 2 -d ":" | awk '{$1=$1}1')
-cpu_architecture=$(lscpu | grep 'Architecture' | cut -f 2 -d ":" | awk '{$1=$1}1')
+
+#cpu_info
+if have_cmd lscpu; then
+    cpu_model=$(lscpu | grep 'Model name' | cut -f 2 -d ":" | awk '{$1=$1}1')
+    cpu_architecture=$(lscpu | grep 'Architecture' | cut -f 2 -d ":" | awk '{$1=$1}1')
+else
+    cpu_model="N/A"
+    cpu_architecture=$(uname -m)
+fi
+
 cpu_load=$(cat <(grep 'cpu ' /proc/stat) <(sleep 1 && grep 'cpu ' /proc/stat) | awk -v RS="" '{print ($13-$2+$15-$4)*100/($13-$2+$15-$4+$16-$5) "%"}')
 system_name=$(awk -F 'NAME' '{print $0}' /etc/*-release | grep  "^NAME")
+
+#os info + uptime+date
 OSVersion=$(awk -F 'NAME' '{print $0}' /etc/*-release | grep  "^VERSION=")
 printf %"s\n"
 OSInfo=$(uname -srmo)
 UPTIME=$(uptime -p)
 DATE=$(date)
+
+#ram info
 MEMTOTAL=$(cat /proc/meminfo | grep MemTotal | cut -f 2 -d ":" | awk '{$1=$1}1')
 FREEMEM=$(cat /proc/meminfo | grep MemFree | cut -f 2 -d ":" | awk '{$1=$1}1')
 USEDMEM=$(free | grep "Mem:"  | awk '{print $2}')
 AVAILMEM=$(cat /proc/meminfo | grep MemAvailable | cut -f 2 -d ":" | awk '{$1=$1}1')
 RAMSLOTS=$(dmidecode -t memory | grep -i size | wc -l)
 INSTALLEDRAM=$(dmidecode -t memory | grep -i size)
+
+#hdd info
 HDDMODEL=$(smartctl -i /dev/sda | grep "Device Model" | awk '{print $3, $4}')
 HDDTYPE=$(smartctl -i /dev/sda | grep "Model Family" | awk '{print $3, $4, $5}')
 HDDCAPACITY=$(smartctl -i /dev/sda | grep "User Capacity" | awk '{print $5, $6}')
 HDDUSED=$(df -H --total | grep -i total | awk '{print $3}')
 HDDAVAIL=$(df -H --total | grep -i total | awk '{print $4}')
+
+#docker info
 DOCKERIMAGES=$(docker ps -q | wc -l)
 DOCKER=$(which docker)
+
+#gpu info
 GPU=$(lspci | grep -i vga)
 
 
