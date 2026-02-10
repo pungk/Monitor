@@ -97,7 +97,7 @@ AVAILMEM=$(cat /proc/meminfo | grep MemAvailable | cut -f 2 -d ":" | awk '{$1=$1
 #hdd info
 PRIMARY_DISK=$(get_primary_disk)
 
-if [[ -n "$PRIMARY_DISK" && -b "$PRIMARY_DISK" && have_cmd smartctl ]]; then
+if have_cmd smartctl && [[ -n "$PRIMARY_DISK" && -b "$PRIMARY_DISK" ]]; then
     HDDMODEL=$(smartctl -i "$PRIMARY_DISK" 2>/dev/null | awk -F: '/Device Model|Model Number/{print $2}' | xargs)
     HDDTYPE=$(smartctl -i "$PRIMARY_DISK" 2>/dev/null | awk -F: '/Model Family/{print $2}' | xargs)
     HDDCAPACITY=$(smartctl -i "$PRIMARY_DISK" 2>/dev/null | awk -F: '/User Capacity/{print $2}' | xargs)
