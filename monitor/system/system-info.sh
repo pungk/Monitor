@@ -48,6 +48,11 @@ safe_run() {
   "$@" 2>/dev/null || echo "N/A"
 }
 
+#create get_primary_disk function
+get_primary_disk() {
+    lsblk -dn -o NAME,TYPE 2>/dev/null | awk '$2=="disk"{print "/dev/"$1; exit}'
+}
+
 
 printf %"s\n"
 echo -e "${GREEN}Computer Summary${NC}"
