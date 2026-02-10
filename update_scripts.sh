@@ -1,42 +1,41 @@
 #!/usr/bin/env bash
 
 # update_scripts.sh
-# Force-sync local repository with GitHub (interactive auth)
+# Force-sync repo from GitHub with interactive credentials
 # Overwrites all local changes
-# 08 Feb 2026
 
 set -o pipefail
 
 REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
-REMOTE="origin"
 BRANCH="main"
+REMOTE_URL="https://github.com/pungk/Monitor.git"
 
 cd "$REPO_DIR" || exit 1
 
-# Verify git repo
 if [[ ! -d .git ]]; then
-    echo "ERROR: This directory is not a git repository."
+    echo "ERROR: Not a git repository."
     exit 1
 fi
 
 echo "This will overwrite ALL local changes."
 echo
 
-# Force git to prompt for credentials
-export GIT_TERMINAL_PROMPT=1
-export GIT_ASKPASS=
+# --- FORCE INTERACTIVE AUTH ---
+read -rp "GitHub username: " GH_USER
+read -rsp "GitHub token: " GH_TOKEN
+echo
+echo
 
-# Disable credential helpers for this run
-git config --local --unset-all credential.helper 2>/dev/null
+AUTH_URL="https://${GH_USER}:${GH_TOKEN}@github.com/pungk/Monitor.git"
 
 echo "Fetching from GitHub..."
-git fetch "$REMOTE" || {
-    echo "ERROR: Authentication failed or fetch error."
+git fetch "$AUTH_URL" || {
+    echo "ERROR: Authentication failed."
     exit 1
 }
 
-echo "Resetting local branch to $REMOTE/$BRANCH..."
-git reset --hard "$REMOTE/$BRANCH"
+echo "Resetting local branch..."
+git reset --hard FETCH_HEAD
 
 echo "Removing untracked files..."
 git clean -fd
