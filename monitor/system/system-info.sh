@@ -154,12 +154,11 @@ fi
 if have_cmd lspci; then
     GPU=$(lspci | grep -iE 'vga|3d' \
         | head -n 1 \
-        | sed -E 's/^[^:]+: //' \
+        | sed -E 's/^.*: //' \
         | sed -E 's/ \(rev.*\)//')
 else
     GPU="N/A"
 fi
-
 ########### run ############
 
 
