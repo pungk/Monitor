@@ -71,14 +71,21 @@ else
 fi
 
 cpu_load=$(cat <(grep 'cpu ' /proc/stat) <(sleep 1 && grep 'cpu ' /proc/stat) | awk -v RS="" '{print ($13-$2+$15-$4)*100/($13-$2+$15-$4+$16-$5) "%"}')
-system_name=$(awk -F 'NAME' '{print $0}' /etc/*-release | grep  "^NAME")
 
 #os info + uptime+date
-OSVersion=$(awk -F 'NAME' '{print $0}' /etc/*-release | grep  "^VERSION=")
-printf %"s\n"
 OSInfo=$(uname -srmo)
 UPTIME=$(uptime -p)
 DATE=$(date)
+
+if [[ -r /etc/os-release ]]; then
+    # shellcheck disable=SC1091
+    . /etc/os-release
+    system_name="$NAME"
+    OSVersion="$VERSION"
+else
+    system_name=$(uname -s)
+    OSVersion=$(uname -r)
+fi
 
 #ram info
 if have_cmd dmidecode; then
