@@ -243,7 +243,8 @@ printf %"s\n"
 
 
 #GPU
-echo -e "${RED}Graphic Processor${NC}: $GPU"
+echo -e "${RED}Graphic Processor${NC}:"
+echo -e "${BWHITE}${UWHITE}GPU${NC}: $GPU"
 echo -e "${BWHITE}${UWHITE}GPU Type${NC}: $GPU_TYPE"
 printf %"s\n"
 
