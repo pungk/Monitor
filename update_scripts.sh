@@ -36,7 +36,8 @@ log() {
   local msg="$*"
   local line
   line="$(ts) [$level] $msg"
-  echo "$line" | tee -a "$STATE_LOG" "$PUBLIC_LOG" >/dev/null
+
+  echo "$line" | tee -a "$PUBLIC_LOG" >/dev/null
   echo "$line"
 }
 
@@ -46,19 +47,14 @@ die() {
 }
 
 rotate_logs_if_needed() {
-  # Archive logs if older than 1 day
   local archive_date
   archive_date="$(date +%Y-%m-%d)"
 
-  for f in "$STATE_LOG" "$PUBLIC_LOG"; do
-    if [[ -f "$f" ]] && find "$f" -mtime +0 -print -quit | grep -q .; then
-      local dir base archived
-      dir="$(dirname "$f")"
-      base="$(basename "$f" .log)"
-      archived="$dir/${base}_$archive_date.log"
-      mv "$f" "$archived"
-    fi
-  done
+  if [[ -f "$PUBLIC_LOG" ]] && find "$PUBLIC_LOG" -mtime +0 -print -quit | grep -q .; then
+    local archived
+    archived="$LOG_DIR/update_scripts_$archive_date.log"
+    mv "$PUBLIC_LOG" "$archived"
+  fi
 }
 
 rotate_logs_if_needed
@@ -181,8 +177,8 @@ do_status() {
   echo "Repository status:"
   echo "  Current commit : $cur"
   echo "  Rollback point : $rb"
-  echo "  Public log     : $PUBLIC_LOG"
-  echo "  State log      : $STATE_LOG"
+  echo "  Log file       : $PUBLIC_LOG"
+  echo "  Rollback file  : $ROLLBACK_FILE"
 }
 
 usage() {
