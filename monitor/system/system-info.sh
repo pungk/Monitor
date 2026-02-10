@@ -76,12 +76,18 @@ UPTIME=$(uptime -p)
 DATE=$(date)
 
 #ram info
+if have_cmd dmidecode; then
+    RAMSLOTS=$(dmidecode -t memory 2>/dev/null | grep -i "Size:" | wc -l)
+    INSTALLEDRAM=$(dmidecode -t memory 2>/dev/null | grep -i "Size:")
+else
+    RAMSLOTS="N/A"
+    INSTALLEDRAM="N/A"
+fi
+
 MEMTOTAL=$(cat /proc/meminfo | grep MemTotal | cut -f 2 -d ":" | awk '{$1=$1}1')
 FREEMEM=$(cat /proc/meminfo | grep MemFree | cut -f 2 -d ":" | awk '{$1=$1}1')
 USEDMEM=$(free | grep "Mem:"  | awk '{print $2}')
 AVAILMEM=$(cat /proc/meminfo | grep MemAvailable | cut -f 2 -d ":" | awk '{$1=$1}1')
-RAMSLOTS=$(dmidecode -t memory | grep -i size | wc -l)
-INSTALLEDRAM=$(dmidecode -t memory | grep -i size)
 
 #hdd info
 HDDMODEL=$(smartctl -i /dev/sda | grep "Device Model" | awk '{print $3, $4}')
