@@ -9,6 +9,7 @@ set -o pipefail
 
 REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
 BRANCH="main"
+REMOTE_NAME="${REMOTE_NAME:-origin}"
 
 cd "$REPO_DIR" || exit 1
 
@@ -62,8 +63,34 @@ rotate_logs_if_needed() {
 
 rotate_logs_if_needed
 
-prompt_credentials() {
-  local GH_USER GH_TOKEN
+get_remote_https_url() {
+  # Returns an HTTPS URL like: https://github.com/user/repo.git
+  local url
+  url="$(git remote get-url "$REMOTE_NAME" 2>/dev/null)" || return 1
+
+  # If already https://... keep it
+  if [[ "$url" =~ ^https?:// ]]; then
+    echo "$url"
+    return 0
+  fi
+
+  # Convert SSH forms:
+  # git@github.com:user/repo.git  -> https://github.com/user/repo.git
+  # ssh://git@github.com/user/repo.git -> https://github.com/user/repo.git
+  url="$(echo "$url" \
+    | sed -E 's#^ssh://git@github.com/#https://github.com/#' \
+    | sed -E 's#^git@github.com:#https://github.com/#')"
+
+  if [[ "$url" =~ ^https://github\.com/ ]]; then
+    echo "$url"
+    return 0
+  fi
+
+  return 1
+}
+
+prompt_credentials_and_build_auth_url() {
+  local GH_USER GH_TOKEN BASE_URL
   read -rp "GitHub username: " GH_USER
   read -rsp "GitHub token: " GH_TOKEN
   echo
@@ -72,7 +99,10 @@ prompt_credentials() {
   [[ -n "$GH_USER" ]]  || die "GitHub username cannot be empty."
   [[ -n "$GH_TOKEN" ]] || die "GitHub token cannot be empty."
 
-  AUTH_URL="https://${GH_USER}:${GH_TOKEN}@github.com/pungk/Monitor.git"
+  BASE_URL="$(get_remote_https_url)" || die "Cannot determine HTTPS remote URL for '$REMOTE_NAME'."
+
+  # Inject creds: https://github.com/user/repo.git -> https://USER:TOKEN@github.com/user/repo.git
+  AUTH_URL="$(echo "$BASE_URL" | sed -E "s#^https://#https://${GH_USER}:${GH_TOKEN}@#")"
 }
 
 save_rollback_point() {
@@ -83,11 +113,12 @@ save_rollback_point() {
 }
 
 do_update() {
+  log "INFO" "Command: update"
   log "INFO" "Starting update to branch '$BRANCH' (FORCE)."
   log "WARN" "This will overwrite ALL local changes and remove untracked files."
 
   save_rollback_point
-  prompt_credentials
+  prompt_credentials_and_build_auth_url
 
   log "INFO" "Fetching from GitHub (interactive authentication)..."
 
@@ -106,19 +137,22 @@ do_update() {
     exit 1
   fi
 
-  # Log fetch output for traceability
   log "INFO" "$FETCH_OUT"
 
   log "INFO" "Resetting local branch to fetched HEAD..."
-  git reset --hard FETCH_HEAD || die "git reset failed."
+  RESET_OUT="$(git reset --hard FETCH_HEAD 2>&1)" || { log "ERROR" "$RESET_OUT"; die "git reset failed."; }
+  log "INFO" "$RESET_OUT"
 
   log "INFO" "Removing untracked files (excluding .git and logs/)..."
-  git clean -fd -e logs/ || die "git clean failed."
+  CLEAN_OUT="$(git clean -fd -e logs/ 2>&1)" || { log "ERROR" "$CLEAN_OUT"; die "git clean failed."; }
+  [[ -n "$CLEAN_OUT" ]] && log "INFO" "$CLEAN_OUT"
 
   log "INFO" "Update complete. Current commit: $(git rev-parse --short HEAD 2>/dev/null || echo UNKNOWN)"
 }
 
 do_rollback() {
+  log "INFO" "Command: rollback"
+
   [[ -f "$ROLLBACK_FILE" ]] || die "No rollback point found (run update first)."
 
   local target
@@ -130,13 +164,17 @@ do_rollback() {
 
   git cat-file -e "$target^{commit}" 2>/dev/null || die "Rollback commit not found locally."
 
-  git reset --hard "$target" || die "Rollback reset failed."
-  git clean -fd -e logs/ || die "Rollback clean failed."
+  RESET_OUT="$(git reset --hard "$target" 2>&1)" || { log "ERROR" "$RESET_OUT"; die "Rollback reset failed."; }
+  log "INFO" "$RESET_OUT"
+
+  CLEAN_OUT="$(git clean -fd -e logs/ 2>&1)" || { log "ERROR" "$CLEAN_OUT"; die "Rollback clean failed."; }
+  [[ -n "$CLEAN_OUT" ]] && log "INFO" "$CLEAN_OUT"
 
   log "INFO" "Rollback complete. Current commit: $(git rev-parse --short HEAD 2>/dev/null || echo UNKNOWN)"
 }
 
 do_status() {
+  log "INFO" "Command: status"
   local cur rb
   cur="$(git rev-parse --short HEAD 2>/dev/null || echo UNKNOWN)"
   rb="$(cat "$ROLLBACK_FILE" 2>/dev/null || echo NONE)"
@@ -153,9 +191,10 @@ Usage:
   $0 [command]
 
 Commands:
-  update        Force-sync repository from GitHub 
+  update        Force-sync repository from GitHub \
                - prompts for GitHub username and token
-               - fails if token is empty/invalid 
+               - fails if token is empty/invalid
+               - uses current git remote '$REMOTE_NAME' (supports forks/renames)
 
   rollback      Roll back to the commit saved before last update
   status        Show current commit, rollback point, and log locations
