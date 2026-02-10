@@ -36,7 +36,7 @@ if [[ $USE_COLOR -eq 1 ]]; then
     UYELLOW='\033[4;33m' #Yellow underlined text
 fi
 
-#create functions to make script quieta and check for path
+#create functions to make script quiet exit and check for path
 
 #check program exists
 have_cmd() {
@@ -68,8 +68,8 @@ MEMTOTAL=$(cat /proc/meminfo | grep MemTotal | cut -f 2 -d ":" | awk '{$1=$1}1')
 FREEMEM=$(cat /proc/meminfo | grep MemFree | cut -f 2 -d ":" | awk '{$1=$1}1')
 USEDMEM=$(free | grep "Mem:"  | awk '{print $2}')
 AVAILMEM=$(cat /proc/meminfo | grep MemAvailable | cut -f 2 -d ":" | awk '{$1=$1}1')
-RAMSLOTS=$(sudo dmidecode -t memory | grep -i size | wc -l)
-INSTALLEDRAM=$(sudo dmidecode -t memory | grep -i size)
+RAMSLOTS=$(dmidecode -t memory | grep -i size | wc -l)
+INSTALLEDRAM=$(dmidecode -t memory | grep -i size)
 HDDMODEL=$(smartctl -i /dev/sda | grep "Device Model" | awk '{print $3, $4}')
 HDDTYPE=$(smartctl -i /dev/sda | grep "Model Family" | awk '{print $3, $4, $5}')
 HDDCAPACITY=$(smartctl -i /dev/sda | grep "User Capacity" | awk '{print $5, $6}')
