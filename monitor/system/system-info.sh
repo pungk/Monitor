@@ -90,18 +90,35 @@ USEDMEM=$(free | grep "Mem:"  | awk '{print $2}')
 AVAILMEM=$(cat /proc/meminfo | grep MemAvailable | cut -f 2 -d ":" | awk '{$1=$1}1')
 
 #hdd info
-HDDMODEL=$(smartctl -i /dev/sda | grep "Device Model" | awk '{print $3, $4}')
-HDDTYPE=$(smartctl -i /dev/sda | grep "Model Family" | awk '{print $3, $4, $5}')
-HDDCAPACITY=$(smartctl -i /dev/sda | grep "User Capacity" | awk '{print $5, $6}')
+if have_cmd smartctl; then
+    HDDMODEL=$(smartctl -i /dev/sda 2>/dev/null | grep "Device Model" | awk '{print $3, $4}')
+    HDDTYPE=$(smartctl -i /dev/sda 2>/dev/null | grep "Model Family" | awk '{print $3, $4, $5}')
+    HDDCAPACITY=$(smartctl -i /dev/sda 2>/dev/null | grep "User Capacity" | awk '{print $5, $6}')
+else
+    HDDMODEL="N/A"
+    HDDTYPE="N/A"
+    HDDCAPACITY="N/A"
+fi
+
 HDDUSED=$(df -H --total | grep -i total | awk '{print $3}')
 HDDAVAIL=$(df -H --total | grep -i total | awk '{print $4}')
 
 #docker info
-DOCKERIMAGES=$(docker ps -q | wc -l)
-DOCKER=$(which docker)
+
+if have_cmd docker; then
+    DOCKERIMAGES=$(docker ps -q 2>/dev/null | wc -l)
+    DOCKER=$(command -v docker)
+else
+    DOCKERIMAGES="Docker not installed"
+    DOCKER="N/A"
+fi
 
 #gpu info
-GPU=$(lspci | grep -i vga)
+if have_cmd lspci; then
+    GPU=$(lspci | grep -i vga)
+else
+    GPU="N/A"
+fi
 
 
 #CPU
