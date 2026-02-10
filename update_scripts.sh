@@ -158,7 +158,27 @@ do_rollback() {
   log "WARN" "Rolling back to commit: $target"
   log "WARN" "This will overwrite ALL local changes and remove untracked files."
 
-  git cat-file -e "$target^{commit}" 2>/dev/null || die "Rollback commit not found locally."
+  #ask auth for github
+  prompt_credentials_and_build_auth_url
+
+  log "INFO" "Fetching from GitHub before rollback (interactive authentication)..."
+  FETCH_OUT="$(
+    GIT_TERMINAL_PROMPT=0 \
+    GIT_ASKPASS=/bin/false \
+    git -c credential.helper= -c core.askPass= \
+      fetch "$AUTH_URL" 2>&1
+  )"
+  FETCH_RC=$?
+
+  if [[ $FETCH_RC -ne 0 ]]; then
+    log "ERROR" "Fetch failed (bad token / network / URL). Rollback aborted."
+    log "ERROR" "$FETCH_OUT"
+    exit 1
+  fi
+  log "INFO" "$FETCH_OUT"
+
+  #rollback locally
+  git cat-file -e "$target^{commit}" 2>/dev/null || die "Rollback commit not found locally (even after fetch): $target"
 
   RESET_OUT="$(git reset --hard "$target" 2>&1)" || { log "ERROR" "$RESET_OUT"; die "Rollback reset failed."; }
   log "INFO" "$RESET_OUT"
