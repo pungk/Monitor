@@ -126,18 +126,28 @@ if have_cmd docker; then
         if docker info >/dev/null 2>&1; then
             DOCKER_STATUS="Running"
             DOCKERIMAGES=$(docker ps -q | wc -l)
+
+            # List running containers: name (image)
+            DOCKER_CONTAINERS=$(docker ps \
+                --format '{{.Names}} ({{.Image}})' 2>/dev/null)
+
+            # Fallback if none running
+            [[ -z "$DOCKER_CONTAINERS" ]] && DOCKER_CONTAINERS="None running"
         else
             DOCKER_STATUS="Socket exists but daemon not responding"
             DOCKERIMAGES="N/A"
+            DOCKER_CONTAINERS="N/A"
         fi
     else
         DOCKER_STATUS="Docker installed, socket missing"
         DOCKERIMAGES="N/A"
+        DOCKER_CONTAINERS="N/A"
     fi
 else
     DOCKER="N/A"
     DOCKER_STATUS="Docker not installed"
     DOCKERIMAGES="N/A"
+    DOCKER_CONTAINERS="N/A"
 fi
 
 #gpu info
@@ -201,6 +211,10 @@ echo -e "${UYELLOW}disclaimer${NC}: if Docker is installed the location under wh
 echo -e "${UYELLOW}Docker installed under${NC}: $DOCKER"
 echo -e "${UYELLOW}Docker status${NC}: $DOCKER_STATUS"
 echo -e "${UYELLOW}Docker images running${NC}: $DOCKERIMAGES"
+echo -e "${UYELLOW}Running containers${NC}:"
+while read -r line; do
+    echo -e "  - $line"
+done <<< "$DOCKER_CONTAINERS"
 printf %"s\n"
 
 
