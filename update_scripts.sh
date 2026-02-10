@@ -2,7 +2,7 @@
 
 # update_scripts.sh
 # Force-sync repo from GitHub with interactive credentials
-# Adds logging + rollback (rollback survives git clean)
+# Logging + rollback (rollback survives git clean)
 # 10 Feb 2026
 
 set -o pipefail
@@ -17,22 +17,35 @@ if [[ ! -d .git ]]; then
   exit 1
 fi
 
-# Store state inside .git so git clean won't delete it
+# Store rollback/state inside .git so git clean -fd won't delete it
 STATE_DIR="$REPO_DIR/.git/monitor_state"
-
-LOG_DIR="$REPO_DIR/logs"
 ROLLBACK_FILE="$STATE_DIR/rollback_commit"
 
-STATE_LOG="$STATE_DIR/state.log"
+# Public log location (we exclude logs/ from git clean)
+LOG_DIR="$REPO_DIR/logs"
 PUBLIC_LOG="$LOG_DIR/update_scripts.log"
+STATE_LOG="$STATE_DIR/state.log"
 
 mkdir -p "$STATE_DIR" "$LOG_DIR"
 
 ts() { date "+%Y-%m-%d %H:%M:%S"; }
 
+log() {
+  local level="$1"; shift
+  local msg="$*"
+  local line
+  line="$(ts) [$level] $msg"
+  echo "$line" | tee -a "$STATE_LOG" "$PUBLIC_LOG" >/dev/null
+  echo "$line"
+}
+
+die() {
+  log "ERROR" "$*"
+  exit 1
+}
 
 rotate_logs_if_needed() {
-  # If log file is older than 1 day, archive it
+  # Archive logs if older than 1 day
   local archive_date
   archive_date="$(date +%Y-%m-%d)"
 
@@ -49,23 +62,16 @@ rotate_logs_if_needed() {
 
 rotate_logs_if_needed
 
-log() {
-  local level="$1"; shift
-  local msg="$*"
-  local line
-  line="$(ts) [$level] $msg"
-
-  echo "$line" | tee -a "$STATE_LOG" "$PUBLIC_LOG" >/dev/null
-  echo "$line"
-}
-
 prompt_credentials() {
-[[ -n "${GH_USER}" ]]  || die "GitHub username cannot be empty."
-[[ -n "${GH_TOKEN}" ]] || die "GitHub token cannot be empty."
+  local GH_USER GH_TOKEN
   read -rp "GitHub username: " GH_USER
   read -rsp "GitHub token: " GH_TOKEN
   echo
   echo
+
+  [[ -n "$GH_USER" ]]  || die "GitHub username cannot be empty."
+  [[ -n "$GH_TOKEN" ]] || die "GitHub token cannot be empty."
+
   AUTH_URL="https://${GH_USER}:${GH_TOKEN}@github.com/pungk/Monitor.git"
 }
 
@@ -76,7 +82,6 @@ save_rollback_point() {
   log "INFO" "Saved rollback commit: $commit"
 }
 
-
 do_update() {
   log "INFO" "Starting update to branch '$BRANCH' (FORCE)."
   log "WARN" "This will overwrite ALL local changes and remove untracked files."
@@ -86,28 +91,28 @@ do_update() {
 
   log "INFO" "Fetching from GitHub (interactive authentication)..."
 
+  # Force git to use ONLY the provided creds (no helpers, no prompts)
   FETCH_OUT="$(
     GIT_TERMINAL_PROMPT=0 \
     GIT_ASKPASS=/bin/false \
     git -c credential.helper= -c core.askPass= \
-        fetch "$AUTH_URL" 2>&1
+      fetch "$AUTH_URL" 2>&1
   )"
   FETCH_RC=$?
 
   if [[ $FETCH_RC -ne 0 ]]; then
-    log "ERROR" "Fetch failed (bad credentials or network)."
+    log "ERROR" "Fetch failed (bad token / network / URL)."
     log "ERROR" "$FETCH_OUT"
     exit 1
   fi
 
-  # Optional: log the fetch output (usually short)
+  # Log fetch output for traceability
   log "INFO" "$FETCH_OUT"
 
- 
   log "INFO" "Resetting local branch to fetched HEAD..."
   git reset --hard FETCH_HEAD || die "git reset failed."
 
-  log "INFO" "Removing untracked files (excluding .git)..."
+  log "INFO" "Removing untracked files (excluding .git and logs/)..."
   git clean -fd -e logs/ || die "git clean failed."
 
   log "INFO" "Update complete. Current commit: $(git rev-parse --short HEAD 2>/dev/null || echo UNKNOWN)"
@@ -115,6 +120,7 @@ do_update() {
 
 do_rollback() {
   [[ -f "$ROLLBACK_FILE" ]] || die "No rollback point found (run update first)."
+
   local target
   target="$(cat "$ROLLBACK_FILE")"
   [[ -n "$target" ]] || die "Rollback file is empty."
@@ -125,7 +131,7 @@ do_rollback() {
   git cat-file -e "$target^{commit}" 2>/dev/null || die "Rollback commit not found locally."
 
   git reset --hard "$target" || die "Rollback reset failed."
-  git clean -fd || die "Rollback clean failed."
+  git clean -fd -e logs/ || die "Rollback clean failed."
 
   log "INFO" "Rollback complete. Current commit: $(git rev-parse --short HEAD 2>/dev/null || echo UNKNOWN)"
 }
@@ -137,7 +143,8 @@ do_status() {
   echo "Repository status:"
   echo "  Current commit : $cur"
   echo "  Rollback point : $rb"
-  echo "  Log file       : $LOG_FILE"
+  echo "  Public log     : $PUBLIC_LOG"
+  echo "  State log      : $STATE_LOG"
 }
 
 usage() {
@@ -147,8 +154,11 @@ Usage:
 
 Commands:
   update        Force-sync repository from GitHub 
+               - prompts for GitHub username and token
+               - fails if token is empty/invalid 
+
   rollback      Roll back to the commit saved before last update
-  status        Show current commit and rollback point
+  status        Show current commit, rollback point, and log locations
 
 Options:
   -h, --help    Show this help message
