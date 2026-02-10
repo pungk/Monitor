@@ -120,11 +120,24 @@ HDDAVAIL=$(df -H --total | grep -i total | awk '{print $4}')
 #docker info
 
 if have_cmd docker; then
-    DOCKERIMAGES=$(docker ps -q 2>/dev/null | wc -l)
     DOCKER=$(command -v docker)
+
+    if [[ -S /var/run/docker.sock ]]; then
+        if docker info >/dev/null 2>&1; then
+            DOCKER_STATUS="Running"
+            DOCKERIMAGES=$(docker ps -q | wc -l)
+        else
+            DOCKER_STATUS="Socket exists but daemon not responding"
+            DOCKERIMAGES="N/A"
+        fi
+    else
+        DOCKER_STATUS="Docker installed, socket missing"
+        DOCKERIMAGES="N/A"
+    fi
 else
-    DOCKERIMAGES="Docker not installed"
     DOCKER="N/A"
+    DOCKER_STATUS="Docker not installed"
+    DOCKERIMAGES="N/A"
 fi
 
 #gpu info
@@ -133,6 +146,8 @@ if have_cmd lspci; then
 else
     GPU="N/A"
 fi
+
+########### run ############
 
 
 #CPU
@@ -180,9 +195,11 @@ echo -e "${BWHITE}${UWHITE}Space used${NC}: $HDDUSED"
 echo -e "${BWHITE}${UWHITE}Space available${NC}: $HDDAVAIL"
 printf %"s\n"
 
+#docker
 echo -e "${UYELLOW}disclaimer${NC}: if Docker is installed the location under which docker resides is shown as 'overlay' under df with the full total space and added to the total size/used/available"
 
 echo -e "${UYELLOW}Docker installed under${NC}: $DOCKER"
+echo -e "${UYELLOW}Docker status${NC}: $DOCKER_STATUS"
 echo -e "${UYELLOW}Docker images running${NC}: $DOCKERIMAGES"
 printf %"s\n"
 
@@ -191,6 +208,6 @@ printf %"s\n"
 echo -e "${RED}Graphic Processor${NC}: $GPU"
 printf %"s\n"
 
-#Uptiime
+#Uptime
 echo -e "${RED}Uptime${NC}: date is $DATE and system has been $UPTIME"
 printf %"s\n"
