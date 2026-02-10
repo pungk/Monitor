@@ -159,6 +159,25 @@ if have_cmd lspci; then
 else
     GPU="N/A"
 fi
+
+# Detect GPU type
+    if echo "$GPU_RAW" | grep -qiE 'intel'; then
+        GPU_TYPE="Integrated"
+    elif echo "$GPU_RAW" | grep -qiE 'nvidia'; then
+        GPU_TYPE="Dedicated"
+    elif echo "$GPU_RAW" | grep -qiE 'amd|ati'; then
+        if echo "$GPU_RAW" | grep -qiE 'rx|radeon pro|firepro'; then
+            GPU_TYPE="Dedicated"
+        else
+            GPU_TYPE="Integrated"
+        fi
+    else
+        GPU_TYPE="Unknown"
+    fi
+else
+    GPU="N/A"
+    GPU_TYPE="N/A"
+fi
 ########### run ############
 
 
@@ -222,6 +241,7 @@ printf %"s\n"
 
 #GPU
 echo -e "${RED}Graphic Processor${NC}: $GPU"
+echo -e "${BWHITE}${UWHITE}GPU Type${NC}: $GPU_TYPE"
 printf %"s\n"
 
 #Uptime
