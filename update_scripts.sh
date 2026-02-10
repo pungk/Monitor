@@ -52,16 +52,16 @@ rotate_logs_if_needed
 log() {
   local level="$1"; shift
   local msg="$*"
-  echo "$(ts) [$level] $msg" | tee -a "$STATE_LOG" "$PUBLIC_LOG" >/dev/null
-  echo "$(ts) [$level] $msg"
-}
+  local line
+  line="$(ts) [$level] $msg"
 
-die() {
-  log "ERROR" "$*"
-  exit 1
+  echo "$line" | tee -a "$STATE_LOG" "$PUBLIC_LOG" >/dev/null
+  echo "$line"
 }
 
 prompt_credentials() {
+[[ -n "${GH_USER}" ]]  || die "GitHub username cannot be empty."
+[[ -n "${GH_TOKEN}" ]] || die "GitHub token cannot be empty."
   read -rp "GitHub username: " GH_USER
   read -rsp "GitHub token: " GH_TOKEN
   echo
@@ -85,8 +85,25 @@ do_update() {
   prompt_credentials
 
   log "INFO" "Fetching from GitHub (interactive authentication)..."
-  git fetch "$AUTH_URL" || die "Authentication failed or fetch error."
 
+  FETCH_OUT="$(
+    GIT_TERMINAL_PROMPT=0 \
+    GIT_ASKPASS=/bin/false \
+    git -c credential.helper= -c core.askPass= \
+        fetch "$AUTH_URL" 2>&1
+  )"
+  FETCH_RC=$?
+
+  if [[ $FETCH_RC -ne 0 ]]; then
+    log "ERROR" "Fetch failed (bad credentials or network)."
+    log "ERROR" "$FETCH_OUT"
+    exit 1
+  fi
+
+  # Optional: log the fetch output (usually short)
+  log "INFO" "$FETCH_OUT"
+
+ 
   log "INFO" "Resetting local branch to fetched HEAD..."
   git reset --hard FETCH_HEAD || die "git reset failed."
 
