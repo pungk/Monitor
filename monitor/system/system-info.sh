@@ -11,9 +11,9 @@ set -o pipefail
 
 # root check
 if [[ $EUID -ne 0 ]]; then
-    echo "ERROR: This script must be run as root."
+    echo "ERROR: This script must be run with sudo or as root."
     echo
-    echo "Please run it directly as root"
+    echo "Will exit now"
     exit 1
 fi
 
