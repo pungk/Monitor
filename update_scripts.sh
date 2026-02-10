@@ -2,21 +2,27 @@
 
 # update_scripts.sh
 # Force-sync repo from GitHub with interactive credentials
-# Adds logging + rollback
+# Adds logging + rollback (rollback survives git clean)
 # 10 Feb 2026
 
 set -o pipefail
 
 REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
 BRANCH="main"
-REMOTE_URL="https://github.com/pungk/Monitor.git"
 
-LOG_DIR="$REPO_DIR/logs"
-STATE_DIR="$REPO_DIR/state"
-LOG_FILE="$LOG_DIR/update_scripts.log"
+cd "$REPO_DIR" || exit 1
+
+if [[ ! -d .git ]]; then
+  echo "ERROR: Not a git repository."
+  exit 1
+fi
+
+# Store state INSIDE .git so git clean -fd will not delete it
+STATE_DIR="$REPO_DIR/.git/monitor_state"
+LOG_FILE="$STATE_DIR/update_scripts.log"
 ROLLBACK_FILE="$STATE_DIR/rollback_commit"
 
-mkdir -p "$LOG_DIR" "$STATE_DIR"
+mkdir -p "$STATE_DIR"
 
 ts() { date "+%Y-%m-%d %H:%M:%S"; }
 
@@ -29,11 +35,6 @@ log() {
 die() {
   log "ERROR" "$*"
   exit 1
-}
-
-ensure_repo() {
-  cd "$REPO_DIR" || die "Cannot cd to repo dir: $REPO_DIR"
-  [[ -d .git ]] || die "Not a git repository: $REPO_DIR"
 }
 
 prompt_credentials() {
@@ -52,8 +53,6 @@ save_rollback_point() {
 }
 
 do_update() {
-  ensure_repo
-
   log "INFO" "Starting update to branch '$BRANCH' (FORCE)."
   log "WARN" "This will overwrite ALL local changes and remove untracked files."
 
@@ -66,15 +65,13 @@ do_update() {
   log "INFO" "Resetting local branch to fetched HEAD..."
   git reset --hard FETCH_HEAD || die "git reset failed."
 
-  log "INFO" "Removing untracked files..."
+  log "INFO" "Removing untracked files (excluding .git)..."
   git clean -fd || die "git clean failed."
 
   log "INFO" "Update complete. Current commit: $(git rev-parse --short HEAD 2>/dev/null || echo UNKNOWN)"
 }
 
 do_rollback() {
-  ensure_repo
-
   [[ -f "$ROLLBACK_FILE" ]] || die "No rollback point found (run update first)."
   local target
   target="$(cat "$ROLLBACK_FILE")"
@@ -92,7 +89,6 @@ do_rollback() {
 }
 
 do_status() {
-  ensure_repo
   local cur rb
   cur="$(git rev-parse --short HEAD 2>/dev/null || echo UNKNOWN)"
   rb="$(cat "$ROLLBACK_FILE" 2>/dev/null || echo NONE)"
@@ -108,24 +104,12 @@ Usage:
   $0 [command]
 
 Commands:
-  update        Force-sync repository from GitHub
-                - Prompts for GitHub username and token
-                - Overwrites ALL local changes
-                - Saves rollback point
-
+  update        Force-sync repository from GitHub 
   rollback      Roll back to the commit saved before last update
-                - Overwrites ALL local changes
-
-  status        Show current commit and last rollback commit
+  status        Show current commit and rollback point
 
 Options:
   -h, --help    Show this help message
-
-Examples:
-  $0
-  $0 update
-  $0 rollback
-  $0 status
 EOF
 }
 
