@@ -11,7 +11,7 @@ set -o pipefail
 
 # root check
 if [[ $EUID -ne 0 ]]; then
-    echo "ERROR: This script must be run with sudo or as root."
+    echo "ERROR: This script must be run with elevated priviledges."
     echo
     echo "Will exit now"
     exit 1
@@ -90,10 +90,12 @@ USEDMEM=$(free | grep "Mem:"  | awk '{print $2}')
 AVAILMEM=$(cat /proc/meminfo | grep MemAvailable | cut -f 2 -d ":" | awk '{$1=$1}1')
 
 #hdd info
-if have_cmd smartctl; then
-    HDDMODEL=$(smartctl -i /dev/sda 2>/dev/null | grep "Device Model" | awk '{print $3, $4}')
-    HDDTYPE=$(smartctl -i /dev/sda 2>/dev/null | grep "Model Family" | awk '{print $3, $4, $5}')
-    HDDCAPACITY=$(smartctl -i /dev/sda 2>/dev/null | grep "User Capacity" | awk '{print $5, $6}')
+PRIMARY_DISK=$(get_primary_disk)
+
+if [[ -n "$PRIMARY_DISK" && -b "$PRIMARY_DISK" && have_cmd smartctl ]]; then
+    HDDMODEL=$(smartctl -i "$PRIMARY_DISK" 2>/dev/null | awk -F: '/Device Model|Model Number/{print $2}' | xargs)
+    HDDTYPE=$(smartctl -i "$PRIMARY_DISK" 2>/dev/null | awk -F: '/Model Family/{print $2}' | xargs)
+    HDDCAPACITY=$(smartctl -i "$PRIMARY_DISK" 2>/dev/null | awk -F: '/User Capacity/{print $2}' | xargs)
 else
     HDDMODEL="N/A"
     HDDTYPE="N/A"
