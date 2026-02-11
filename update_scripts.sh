@@ -32,34 +32,6 @@ mkdir -p "$STATE_DIR" "$LOG_DIR"
 ts() { date "+%Y-%m-%d %H:%M:%S"; }
 have_cmd() { command -v "$1" >/dev/null 2>&1; }
 
-prompt_repo_and_credentials() {
-  # Repo prompt
-  read -rp "GitHub repo owner: " GH_OWNER
-  read -rp "GitHub repo name " GH_REPO
-
-  [[ -n "$GH_OWNER" ]] || die "Repo owner cannot be empty."
-  [[ -n "$GH_REPO"  ]] || die "Repo name cannot be empty."
-
-  # Credentials prompt
-  read -rp "GitHub username (any, e.g. your username): " GH_USER
-  read -rsp "GitHub token: " GH_TOKEN
-  echo; echo
-
-  [[ -n "$GH_USER"  ]] || die "GitHub username cannot be empty."
-  [[ -n "$GH_TOKEN" ]] || die "GitHub token cannot be empty."
-
-  # Validate token has access to the repo (works for private repos)
-  require_repo_access
-  # After reading GH_USER and GH_TOKEN (and checking they are non-empty):
-  require_user_exists
-  require_repo_access
-
-
-  # Build remote URL dynamically
-  BASE_URL="https://github.com/${GH_OWNER}/${GH_REPO}.git"
-  AUTH_URL="https://${GH_USER}:${GH_TOKEN}@github.com/${GH_OWNER}/${GH_REPO}.git"
-}
-
 require_repo_access() {
   have_cmd curl || die "curl is required to validate GitHub token/repo access."
 
@@ -76,23 +48,54 @@ require_repo_access() {
     *) die "Unexpected GitHub API response (HTTP $code) for ${GH_OWNER}/${GH_REPO}." ;;
   esac
 }
-require_user_exists() {
-  have_cmd curl || die "curl is required to validate GitHub username."
 
-  # Check if username exists on GitHub (200 = exists, 404 = not)
-  local code
-  code="$(curl -s -o /dev/null -w "%{http_code}" \
-    -H "Authorization: Bearer $GH_TOKEN" \
-    -H "Accept: application/vnd.github+json" \
-    "https://api.github.com/users/${GH_USER}")"
+prompt_repo_and_credentials() {
+  read -rp "GitHub repo owner: " GH_OWNER
+  read -rp "GitHub repo name: "  GH_REPO
 
-  case "$code" in
-    200) return 0 ;;
-    404) die "GitHub username '${GH_USER}' does not exist (HTTP 404)." ;;
-    401|403) die "Token is invalid/forbidden while validating username (HTTP $code)." ;;
-    *) die "Unexpected GitHub response validating username (HTTP $code)." ;;
-  esac
+  [[ -n "$GH_OWNER" ]] || die "Repo owner cannot be empty."
+  [[ -n "$GH_REPO"  ]] || die "Repo name cannot be empty."
+
+  read -rp "GitHub username: " GH_USER
+  read -rsp "GitHub token: " GH_TOKEN
+  echo; echo
+
+  [[ -n "$GH_USER"  ]] || die "GitHub username cannot be empty."
+  [[ -n "$GH_TOKEN" ]] || die "GitHub token cannot be empty."
+
+  # 1) Validate username+token pairing (fails if username is "wrong")
+  require_username_matches_token_owner
+
+  # 2) Validate token has access to repo (private repo support)
+  require_repo_access
+
+  # Build remote URL dynamically
+  BASE_URL="https://github.com/${GH_OWNER}/${GH_REPO}.git"
+  AUTH_URL="https://${GH_USER}:${GH_TOKEN}@github.com/${GH_OWNER}/${GH_REPO}.git"
 }
+
+require_username_matches_token_owner() {
+  have_cmd curl || die "curl is required to validate GitHub credentials."
+
+  # Get token owner login
+  local login
+  login="$(
+    curl -s \
+      -H "Authorization: Bearer $GH_TOKEN" \
+      -H "Accept: application/vnd.github+json" \
+      https://api.github.com/user \
+    | sed -n 's/.*"login":[[:space:]]*"\([^"]*\)".*/\1/p' \
+    | head -n 1
+  )"
+
+  [[ -n "$login" ]] || die "Invalid GitHub token (or token expired)."
+
+  # Enforce username/token pairing, but do NOT reveal token owner
+  if [[ "$login" != "$GH_USER" ]]; then
+    die "Invalid GitHub username/token combination."
+  fi
+}
+
 
 
 log() {
@@ -103,27 +106,6 @@ log() {
 
   echo "$line" | tee -a "$PUBLIC_LOG" >/dev/null
   echo "$line"
-}
-
-require_valid_github_identity() {
-  have_cmd curl || die "curl is required to validate GitHub credentials."
-
-  # Validate token and get username
-  local response login
-  response="$(curl -s \
-    -H "Authorization: Bearer $GH_TOKEN" \
-    -H "Accept: application/vnd.github+json" \
-    https://api.github.com/user)"
-
-  login="$(echo "$response" | sed -n 's/.*"login":[[:space:]]*"\([^"]*\)".*/\1/p' | head -n 1)"
-
-  if [[ -z "$login" ]]; then
-    die "GitHub token validation failed (invalid or expired token)."
-  fi
-
-  if [[ "$login" != "$GH_USER" ]]; then
-    die "GitHub username '$GH_USER' does not match token owner '$login'."
-  fi
 }
 
 die() {
@@ -170,22 +152,6 @@ get_remote_https_url() {
   return 1
 }
 
-prompt_credentials_and_build_auth_url() {
-  read -rp "GitHub username: " GH_USER
-  read -rsp "GitHub token: " GH_TOKEN
-  echo
-  echo
-
-  [[ -n "$GH_USER" ]]  || die "GitHub username cannot be empty."
-  [[ -n "$GH_TOKEN" ]] || die "GitHub token cannot be empty."
-
-  require_valid_github_identity
-
-  local base_url
-  base_url="$(get_remote_https_url)" || die "Cannot determine HTTPS remote URL."
-
-  AUTH_URL="$(echo "$base_url" | sed -E "s#^https://#https://${GH_USER}:${GH_TOKEN}@#")"
-}
 
 save_rollback_point() {
   local commit
