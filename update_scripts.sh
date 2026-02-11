@@ -41,6 +41,27 @@ log() {
   echo "$line"
 }
 
+require_valid_github_identity() {
+  have_cmd curl || die "curl is required to validate GitHub credentials."
+
+  # Validate token and get username
+  local response login
+  response="$(curl -s \
+    -H "Authorization: Bearer $GH_TOKEN" \
+    -H "Accept: application/vnd.github+json" \
+    https://api.github.com/user)"
+
+  login="$(echo "$response" | sed -n 's/.*"login":[[:space:]]*"\([^"]*\)".*/\1/p' | head -n 1)"
+
+  if [[ -z "$login" ]]; then
+    die "GitHub token validation failed (invalid or expired token)."
+  fi
+
+  if [[ "$login" != "$GH_USER" ]]; then
+    die "GitHub username '$GH_USER' does not match token owner '$login'."
+  fi
+}
+
 die() {
   log "ERROR" "$*"
   exit 1
@@ -86,7 +107,6 @@ get_remote_https_url() {
 }
 
 prompt_credentials_and_build_auth_url() {
-  local GH_USER GH_TOKEN BASE_URL
   read -rp "GitHub username: " GH_USER
   read -rsp "GitHub token: " GH_TOKEN
   echo
@@ -95,10 +115,12 @@ prompt_credentials_and_build_auth_url() {
   [[ -n "$GH_USER" ]]  || die "GitHub username cannot be empty."
   [[ -n "$GH_TOKEN" ]] || die "GitHub token cannot be empty."
 
-  BASE_URL="$(get_remote_https_url)" || die "Cannot determine HTTPS remote URL for '$REMOTE_NAME'."
+  require_valid_github_identity
 
-  # Inject creds: https://github.com/user/repo.git -> https://USER:TOKEN@github.com/user/repo.git
-  AUTH_URL="$(echo "$BASE_URL" | sed -E "s#^https://#https://${GH_USER}:${GH_TOKEN}@#")"
+  local base_url
+  base_url="$(get_remote_https_url)" || die "Cannot determine HTTPS remote URL."
+
+  AUTH_URL="$(echo "$base_url" | sed -E "s#^https://#https://${GH_USER}:${GH_TOKEN}@#")"
 }
 
 save_rollback_point() {
