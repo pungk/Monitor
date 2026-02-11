@@ -50,6 +50,10 @@ prompt_repo_and_credentials() {
 
   # Validate token has access to the repo (works for private repos)
   require_repo_access
+  # After reading GH_USER and GH_TOKEN (and checking they are non-empty):
+  require_user_exists
+  require_repo_access
+
 
   # Build remote URL dynamically
   BASE_URL="https://github.com/${GH_OWNER}/${GH_REPO}.git"
@@ -72,6 +76,24 @@ require_repo_access() {
     *) die "Unexpected GitHub API response (HTTP $code) for ${GH_OWNER}/${GH_REPO}." ;;
   esac
 }
+require_user_exists() {
+  have_cmd curl || die "curl is required to validate GitHub username."
+
+  # Check if username exists on GitHub (200 = exists, 404 = not)
+  local code
+  code="$(curl -s -o /dev/null -w "%{http_code}" \
+    -H "Authorization: Bearer $GH_TOKEN" \
+    -H "Accept: application/vnd.github+json" \
+    "https://api.github.com/users/${GH_USER}")"
+
+  case "$code" in
+    200) return 0 ;;
+    404) die "GitHub username '${GH_USER}' does not exist (HTTP 404)." ;;
+    401|403) die "Token is invalid/forbidden while validating username (HTTP $code)." ;;
+    *) die "Unexpected GitHub response validating username (HTTP $code)." ;;
+  esac
+}
+
 
 log() {
   local level="$1"; shift
