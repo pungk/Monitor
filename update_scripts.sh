@@ -32,6 +32,47 @@ mkdir -p "$STATE_DIR" "$LOG_DIR"
 ts() { date "+%Y-%m-%d %H:%M:%S"; }
 have_cmd() { command -v "$1" >/dev/null 2>&1; }
 
+prompt_repo_and_credentials() {
+  # Repo prompt
+  read -rp "GitHub repo owner (e.g. pungk): " GH_OWNER
+  read -rp "GitHub repo name  (e.g. Monitor): " GH_REPO
+
+  [[ -n "$GH_OWNER" ]] || die "Repo owner cannot be empty."
+  [[ -n "$GH_REPO"  ]] || die "Repo name cannot be empty."
+
+  # Credentials prompt
+  read -rp "GitHub username (any, e.g. your username): " GH_USER
+  read -rsp "GitHub token: " GH_TOKEN
+  echo; echo
+
+  [[ -n "$GH_USER"  ]] || die "GitHub username cannot be empty."
+  [[ -n "$GH_TOKEN" ]] || die "GitHub token cannot be empty."
+
+  # Validate token has access to the repo (works for private repos)
+  require_repo_access
+
+  # Build remote URL dynamically
+  BASE_URL="https://github.com/${GH_OWNER}/${GH_REPO}.git"
+  AUTH_URL="https://${GH_USER}:${GH_TOKEN}@github.com/${GH_OWNER}/${GH_REPO}.git"
+}
+
+require_repo_access() {
+  have_cmd curl || die "curl is required to validate GitHub token/repo access."
+
+  local code
+  code="$(curl -s -o /dev/null -w "%{http_code}" \
+    -H "Authorization: Bearer $GH_TOKEN" \
+    -H "Accept: application/vnd.github+json" \
+    "https://api.github.com/repos/${GH_OWNER}/${GH_REPO}")"
+
+  case "$code" in
+    200) return 0 ;;
+    401|403) die "Token is invalid or forbidden (HTTP $code) for ${GH_OWNER}/${GH_REPO}." ;;
+    404) die "Repo not found or no access (HTTP 404) for ${GH_OWNER}/${GH_REPO}." ;;
+    *) die "Unexpected GitHub API response (HTTP $code) for ${GH_OWNER}/${GH_REPO}." ;;
+  esac
+}
+
 log() {
   local level="$1"; shift
   local msg="$*"
@@ -137,7 +178,8 @@ do_update() {
   log "WARN" "This will overwrite ALL local changes and remove untracked files."
 
   save_rollback_point
-  prompt_credentials_and_build_auth_url
+  prompt_repo_and_credentials
+
 
   log "INFO" "Fetching from GitHub (interactive authentication)..."
 
@@ -182,7 +224,8 @@ do_rollback() {
   log "WARN" "This will overwrite ALL local changes and remove untracked files."
 
   #ask auth for github
-  prompt_credentials_and_build_auth_url
+  prompt_repo_and_credentials
+
 
   log "INFO" "Fetching from GitHub before rollback (interactive authentication)..."
   FETCH_OUT="$(
