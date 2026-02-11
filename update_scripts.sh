@@ -34,8 +34,8 @@ have_cmd() { command -v "$1" >/dev/null 2>&1; }
 
 prompt_repo_and_credentials() {
   # Repo prompt
-  read -rp "GitHub repo owner (e.g. pungk): " GH_OWNER
-  read -rp "GitHub repo name  (e.g. Monitor): " GH_REPO
+  read -rp "GitHub repo owner: " GH_OWNER
+  read -rp "GitHub repo name " GH_REPO
 
   [[ -n "$GH_OWNER" ]] || die "Repo owner cannot be empty."
   [[ -n "$GH_REPO"  ]] || die "Repo name cannot be empty."
