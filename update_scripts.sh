@@ -30,6 +30,7 @@ STATE_LOG="$STATE_DIR/state.log"
 mkdir -p "$STATE_DIR" "$LOG_DIR"
 
 ts() { date "+%Y-%m-%d %H:%M:%S"; }
+have_cmd() { command -v "$1" >/dev/null 2>&1; }
 
 log() {
   local level="$1"; shift
