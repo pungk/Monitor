@@ -7,11 +7,6 @@
 
 set -o pipefail
 
-
-rotate_logs_if_needed
-open_log_fd
-archive_old_logs
-
 REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
 BRANCH="main"
 REMOTE_NAME="${REMOTE_NAME:-origin}"
@@ -30,6 +25,7 @@ ROLLBACK_FILE="$STATE_DIR/rollback_commit"
 # Public log location 
 LOG_DIR="$REPO_DIR/logs"
 PUBLIC_LOG="$LOG_DIR/update_scripts.log"
+STATE_LOG="$STATE_DIR/state.log"
 
 #
 NAME="update_scripts"
@@ -115,9 +111,7 @@ log() {
   local line
   line="$(ts) [$level] $msg"
 
-  # Write to file via FD 3 (never loses lines mid-run)
-  printf '%s\n' "$line" >&3
-  # Also show in console
+  echo "$line" | tee -a "$PUBLIC_LOG" >/dev/null
   echo "$line"
 }
 
@@ -129,48 +123,44 @@ die() {
 rotate_logs_if_needed() {
   [[ -f "$PUBLIC_LOG" ]] || return 0
 
-  local today file_date archived
+  # Get today's date
   today="$(date +%Y-%m-%d)"
-  file_date="$(date -r "$PUBLIC_LOG" +%Y-%m-%d 2>/dev/null || echo "")"
 
-  # Rotate only if the file is from a previous day
-  if [[ -n "$file_date" && "$file_date" != "$today" ]]; then
+  # Extract file date from last modification
+  file_date="$(date -r "$PUBLIC_LOG" +%Y-%m-%d)"
+
+  # Only rotate if file date is NOT today
+  if [[ "$file_date" != "$today" ]]; then
     archived="$LOG_DIR/${NAME}_${file_date}.log"
+
+    # Avoid overwrite
     if [[ -e "$archived" ]]; then
       archived="$LOG_DIR/${NAME}_${file_date}_$(date +%H%M%S).log"
     fi
+
     mv "$PUBLIC_LOG" "$archived"
   fi
 }
 
 
-
-
-open_log_fd() {
-  exec 3>>"$PUBLIC_LOG" || { echo "ERROR: Cannot write to $PUBLIC_LOG"; exit 1; }
-}
+rotate_logs_if_needed
 
 
 archive_old_logs() {
   # Zip rotated logs older than 7 days into logs/old/<name>/ and delete originals
   have_cmd zip || die "zip is required to archive logs older than 1 week." # die if zip is missing
 
-   find "$LOG_DIR" -maxdepth 1 -type f -name "${NAME}_*.log" -mtime +7 -print0 |
-    while IFS= read -r -d '' f; do
-      local base zip_path
-      base="$(basename "$f" .log)"
-      zip_path="$OLD_DIR/${base}.zip"
+  find "$LOG_DIR" -maxdepth 1 -type f -name "${NAME}_*.log" -mtime +7 -print0 \
+    | while IFS= read -r -d '' f; do
+        base="$(basename "$f" .log)"
+        zip_path="$OLD_DIR/${base}.zip"
 
-      # Avoid overwriting zip
-      if [[ -e "$zip_path" ]]; then
-        zip_path="$OLD_DIR/${base}_$(date +%H%M%S).zip"
-      fi
-
-      zip -j -q "$zip_path" "$f" && rm -f "$f"
-    done
+        # Create zip containing the .log
+        zip -j -q "$zip_path" "$f" && rm -f "$f"
+      done
 }
 
-
+archive_old_logs
 
 get_remote_https_url() {
   # Returns an HTTPS URL like: https://github.com/user/repo.git
