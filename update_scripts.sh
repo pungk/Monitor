@@ -22,10 +22,17 @@ fi
 STATE_DIR="$REPO_DIR/.git/monitor_state"
 ROLLBACK_FILE="$STATE_DIR/rollback_commit"
 
-# Public log location (we exclude logs/ from git clean)
+# Public log location 
 LOG_DIR="$REPO_DIR/logs"
 PUBLIC_LOG="$LOG_DIR/update_scripts.log"
 STATE_LOG="$STATE_DIR/state.log"
+
+#
+NAME="update_scripts"
+OLD_DIR="$LOG_DIR/old/$NAME"
+
+
+mkdir -p "$OLD_DIR"
 
 mkdir -p "$STATE_DIR" "$LOG_DIR"
 
@@ -114,17 +121,42 @@ die() {
 }
 
 rotate_logs_if_needed() {
-  local archive_date
-  archive_date="$(date +%Y-%m-%d)"
+  [[ -f "$PUBLIC_LOG" ]] || return 0
 
-  if [[ -f "$PUBLIC_LOG" ]] && find "$PUBLIC_LOG" -mtime +0 -print -quit | grep -q .; then
-    local archived
-    archived="$LOG_DIR/update_scripts_$archive_date.log"
+  # If log is older than 1 day, rotate it
+  if find "$PUBLIC_LOG" -mtime +0 -print -quit | grep -q .; then
+    local d archived
+    d="$(date +%Y-%m-%d)"
+    archived="$LOG_DIR/${NAME}_${d}.log"
+
+    # avoid overwrite if already exists
+    if [[ -e "$archived" ]]; then
+      archived="$LOG_DIR/${NAME}_${d}_$(date +%H%M%S).log"
+    fi
+
     mv "$PUBLIC_LOG" "$archived"
   fi
 }
 
+
 rotate_logs_if_needed
+
+
+archive_old_logs() {
+  # Zip rotated logs older than 7 days into logs/old/<name>/ and delete originals
+  have_cmd zip || die "zip is required to archive logs older than 1 week." # die if zip is missing
+
+  find "$LOG_DIR" -maxdepth 1 -type f -name "${NAME}_*.log" -mtime +7 -print0 \
+    | while IFS= read -r -d '' f; do
+        base="$(basename "$f" .log)"
+        zip_path="$OLD_DIR/${base}.zip"
+
+        # Create zip containing the .log
+        zip -j -q "$zip_path" "$f" && rm -f "$f"
+      done
+}
+
+archive_old_logs
 
 get_remote_https_url() {
   # Returns an HTTPS URL like: https://github.com/user/repo.git
