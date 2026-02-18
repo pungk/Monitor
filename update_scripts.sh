@@ -123,15 +123,19 @@ die() {
 rotate_logs_if_needed() {
   [[ -f "$PUBLIC_LOG" ]] || return 0
 
-  # If log is older than 1 day, rotate it
-  if find "$PUBLIC_LOG" -mtime +0 -print -quit | grep -q .; then
-    local d archived
-    d="$(date +%Y-%m-%d)"
-    archived="$LOG_DIR/${NAME}_${d}.log"
+  # Get today's date
+  today="$(date +%Y-%m-%d)"
 
-    # avoid overwrite if already exists
+  # Extract file date from last modification
+  file_date="$(date -r "$PUBLIC_LOG" +%Y-%m-%d)"
+
+  # Only rotate if file date is NOT today
+  if [[ "$file_date" != "$today" ]]; then
+    archived="$LOG_DIR/${NAME}_${file_date}.log"
+
+    # Avoid overwrite
     if [[ -e "$archived" ]]; then
-      archived="$LOG_DIR/${NAME}_${d}_$(date +%H%M%S).log"
+      archived="$LOG_DIR/${NAME}_${file_date}_$(date +%H%M%S).log"
     fi
 
     mv "$PUBLIC_LOG" "$archived"
