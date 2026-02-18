@@ -245,9 +245,14 @@ do_rollback() {
 
 do_status() {
   log "INFO" "Command: status"
+
+  # Ask for repo + credentials
+  prompt_repo_and_credentials
+
   local cur rb
   cur="$(git rev-parse --short HEAD 2>/dev/null || echo UNKNOWN)"
   rb="$(cat "$ROLLBACK_FILE" 2>/dev/null || echo NONE)"
+
   echo "Repository status:"
   echo "  Current commit : $cur"
   echo "  Rollback point : $rb"
