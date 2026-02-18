@@ -8,7 +8,6 @@
 set -o pipefail
 
 REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
-BRANCH="main"
 REMOTE_NAME="${REMOTE_NAME:-origin}"
 
 cd "$REPO_DIR" || exit 1
@@ -25,9 +24,8 @@ ROLLBACK_FILE="$STATE_DIR/rollback_commit"
 # Public log location 
 LOG_DIR="$REPO_DIR/logs"
 PUBLIC_LOG="$LOG_DIR/update_scripts.log"
-STATE_LOG="$STATE_DIR/state.log"
 
-#
+# Create folder for archives
 NAME="update_scripts"
 OLD_DIR="$LOG_DIR/old/$NAME"
 
@@ -161,33 +159,6 @@ archive_old_logs() {
 }
 
 archive_old_logs
-
-get_remote_https_url() {
-  # Returns an HTTPS URL like: https://github.com/user/repo.git
-  local url
-  url="$(git remote get-url "$REMOTE_NAME" 2>/dev/null)" || return 1
-
-  # If already https://... keep it
-  if [[ "$url" =~ ^https?:// ]]; then
-    echo "$url"
-    return 0
-  fi
-
-  # Convert SSH forms:
-  # git@github.com:user/repo.git  -> https://github.com/user/repo.git
-  # ssh://git@github.com/user/repo.git -> https://github.com/user/repo.git
-  url="$(echo "$url" \
-    | sed -E 's#^ssh://git@github.com/#https://github.com/#' \
-    | sed -E 's#^git@github.com:#https://github.com/#')"
-
-  if [[ "$url" =~ ^https://github\.com/ ]]; then
-    echo "$url"
-    return 0
-  fi
-
-  return 1
-}
-
 
 save_rollback_point() {
   local commit
