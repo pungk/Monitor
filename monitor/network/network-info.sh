@@ -58,7 +58,6 @@ section() {
 show_interfaces() {
   section "Interfaces (link state)"
   if have_cmd ip; then
-    # concise view: IFACE STATE MAC MTU ...
     ip -br link
   else
     echo "N/A (missing: ip)"
