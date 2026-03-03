@@ -190,7 +190,7 @@ show_connectivity() {
 if have_cmd curl; then
   status_line="$(curl -Is --max-time 3 --connect-timeout 2 https://github.com 2>/dev/null | head -n 1)"
   if echo "$status_line" | grep -qiE '^HTTP/([0-9]+\.[0-9]+|2|3)[[:space:]]+[23][0-9]{2}'; then
-    echo -e "  ${GREEN}[OK]${NC} HTTPS to github.com ($status_line)"
+    echo -e "  ${GREEN}[OK]${NC} HTTPS to github.com"
   else
     echo -e "  ${RED}[FAIL]${NC} HTTPS to github.com"
     [[ -n "$status_line" ]] && echo -e "    ${UYELLOW}Got${NC}: $status_line"
