@@ -6,7 +6,10 @@
 # Version: 1.1
 # Updated: 08 Feb 2026
 
-#smarter error logging
+#smarter error logging-if any command in a pipe fails it logs it 
+#not just the last pipe 
+#it returns exit status in $? (echo $?) (above 128)
+#to debug exitcode do "echo $(($?-128))" and then "trap -l" to list all signals
 set -o pipefail
 
 # root check

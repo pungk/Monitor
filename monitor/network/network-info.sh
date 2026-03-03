@@ -6,7 +6,10 @@
 # Version: 0.1
 # Updated: 18 Feb 2026
 
-#smarter error logging
+#smarter error logging-if any command in a pipe fails it logs it 
+#not just the last pipe 
+#it returns exit status in $? (echo $?) (above 128)
+#to debug exitcode do "echo $(($?-128))" and then "trap -l" to list all signals
 set -o pipefail
 
 # root check
@@ -95,10 +98,38 @@ show_ip_addresses() {
   echo
 }
 
+show_routes() {
+  section "Routing"
+  if have_cmd ip; then
+    local gw iface
+    gw="$(ip route show default 2>/dev/null | awk '{print $3; exit}')"
+    iface="$(ip route show default 2>/dev/null | awk '{for (i=1;i<=NF;i++) if ($i=="dev") {print $(i+1); exit}}')"
+
+    echo -e "${BWHITE}${UWHITE}Default route${NC}:"
+    if ip route show default >/dev/null 2>&1; then
+      ip route show default
+    else
+      echo "N/A"
+    fi
+    echo
+
+    echo -e "${BWHITE}${UWHITE}Gateway${NC}: ${gw:-N/A}"
+    echo -e "${BWHITE}${UWHITE}Gateway interface${NC}: ${iface:-N/A}"
+    echo
+
+    echo -e "${BWHITE}${UWHITE}Route table (summary)${NC}:"
+    ip route
+  else
+    echo "N/A (missing: ip)"
+  fi
+  echo
+}
+
 main() {
   title "Network Summary"
   show_interfaces
   show_ip_addresses
+  show_routes
 }
 
 main "$@"
