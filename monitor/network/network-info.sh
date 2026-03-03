@@ -63,9 +63,42 @@ show_interfaces() {
   echo
 }
 
+get_primary_iface() {
+  # interface used for default route (best guess)
+  if have_cmd ip; then
+    ip route show default 2>/dev/null | awk '{for (i=1;i<=NF;i++) if ($i=="dev") {print $(i+1); exit}}'
+  fi
+}
+
+
+show_ip_addresses() {
+  local primary
+  primary="$(get_primary_iface)"
+  section "IP Addresses"
+  if [[ -n "$primary" ]]; then
+    echo -e "${BWHITE}${UWHITE}Primary interface${NC}: $primary"
+  else
+    echo -e "${BWHITE}${UWHITE}Primary interface${NC}: N/A"
+  fi
+  echo
+
+  if have_cmd ip; then
+    echo -e "${BWHITE}${UWHITE}IPv4 (per interface)${NC}:"
+    ip -br -4 addr
+    echo
+
+    echo -e "${BWHITE}${UWHITE}IPv6 (per interface)${NC}:"
+    ip -br -6 addr
+  else
+    echo "N/A (missing: ip)"
+  fi
+  echo
+}
+
 main() {
   title "Network Summary"
   show_interfaces
+  show_ip_addresses
 }
 
 main "$@"
