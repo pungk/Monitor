@@ -172,6 +172,35 @@ dns_test() {
   fi
 }
 
+show_connectivity() {
+  section "Connectivity"
+
+  # --- Ping test (ICMP) ---
+  if have_cmd ping; then
+    if ping -c 1 -W 2 1.1.1.1 >/dev/null 2>&1; then
+      echo -e "  ${GREEN}[OK]${NC} ICMP to 1.1.1.1"
+    else
+      echo -e "  ${RED}[FAIL]${NC} ICMP to 1.1.1.1"
+    fi
+  else
+    echo "  N/A (missing: ping)"
+  fi
+
+  # --- HTTPS test ---
+  if have_cmd curl; then
+    if curl -Is --max-time 3 --connect-timeout 2 https://github.com \
+        | head -n 1 | grep -q "HTTP/"; then
+      echo -e "  ${GREEN}[OK]${NC} HTTPS to github.com"
+    else
+      echo -e "  ${RED}[FAIL]${NC} HTTPS to github.com"
+    fi
+  else
+    echo "  N/A (missing: curl)"
+  fi
+
+  echo
+}
+
 #main script
 main() {
   title "Network Summary"
@@ -179,6 +208,7 @@ main() {
   show_ip_addresses
   show_routes
   show_dns
+  show_connectivity
 }
 #call main script
 main "$@"
