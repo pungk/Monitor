@@ -124,11 +124,61 @@ show_routes() {
   echo
 }
 
+show_dns() {
+  section "DNS"
+  echo -e "${BWHITE}${UWHITE}/etc/resolv.conf${NC}:"
+  if [[ -r /etc/resolv.conf ]]; then
+    # show nameserver/search/options
+    grep -E '^(nameserver|search|options)\b' /etc/resolv.conf 2>/dev/null || cat /etc/resolv.conf
+  else
+    echo "N/A"
+  fi
+  echo
+
+  # If systemd-resolved is in use, /etc/resolv.conf may point to stub.
+  if have_cmd resolvectl; then
+    echo -e "${BWHITE}${UWHITE}resolvectl status (summary)${NC}:"
+    # shortening output
+    resolvectl status 2>/dev/null | sed -n '1,120p'
+    echo
+  elif have_cmd systemd-resolve; then
+    echo -e "${BWHITE}${UWHITE}systemd-resolve --status (summary)${NC}:"
+    systemd-resolve --status 2>/dev/null | sed -n '1,120p'
+    echo
+  fi
+
+  echo -e "${BWHITE}${UWHITE}DNS resolution test${NC}:"
+  dns_test "github.com"
+  dns_test "google.com"
+  echo
+}
+
+dns_test() {
+  local host="$1"
+  local result=""
+
+  if have_cmd getent; then
+    result="$(getent ahosts "$host" 2>/dev/null | awk '{print $1}' | head -n 1)"
+  elif have_cmd dig; then
+    result="$(dig +time=2 +tries=1 +short "$host" 2>/dev/null | head -n 1)"
+  elif have_cmd nslookup; then
+    result="$(nslookup -timeout=2 "$host" 2>/dev/null | awk '/^Address: /{print $2; exit}')"
+  fi
+
+  if [[ -n "$result" ]]; then
+    echo -e "  ${GREEN}[OK]${NC} $host -> $result"
+  else
+    echo -e "  ${RED}[FAIL]${NC} $host (cannot resolve)"
+  fi
+}
+
+#main script
 main() {
   title "Network Summary"
   show_interfaces
   show_ip_addresses
   show_routes
+  show_dns
 }
-
+#call main script
 main "$@"
