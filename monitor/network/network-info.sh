@@ -202,6 +202,27 @@ fi
   echo
 }
 
+show_listening_ports() {
+  section "Listening Services (ports)"
+
+  if have_cmd ss; then
+    # -t tcp, -u udp, -l listening, -n numeric, -p process (needs root for full detail)
+    ss -tulnp 2>/dev/null \
+      | awk 'NR==1{print; next} {print}' \
+      | sed -E 's/users:\(\("([^"]+)".*/process=\1/'
+    echo
+    echo -e "${UYELLOW}Tip${NC}: Run as root for full process names/PIDs (ss -p needs privileges)."
+  elif have_cmd netstat; then
+    netstat -tulnp 2>/dev/null
+    echo
+    echo -e "${UYELLOW}Tip${NC}: Run as root for full process names/PIDs (netstat -p needs privileges)."
+  else
+    echo "N/A (missing: ss or netstat)"
+  fi
+
+  echo
+}
+
 #main script
 main() {
   title "Network Summary"
@@ -210,6 +231,7 @@ main() {
   show_routes
   show_dns
   show_connectivity
+  show_listening_ports
 }
 #call main script
 main "$@"
