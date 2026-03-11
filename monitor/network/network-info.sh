@@ -223,6 +223,47 @@ show_listening_ports() {
   echo
 }
 
+show_exposure_summary() {
+  section "Exposure Summary"
+
+  if ! have_cmd ss; then
+    echo "N/A (missing: ss)"
+    echo
+    return
+  fi
+
+  # parse tcp listeners(most relevant for exposure)
+  ss -tlnp 2>/dev/null | awk '
+    NR==1 { next }  # skip header
+    {
+      local=$4
+      proc=$0
+
+      # extract port from local address (handles IPv6 [::]:443)
+      port=local
+      sub(/^.*:/, "", port)
+
+      # classify bind
+      bind="UNKNOWN"
+      if (local ~ /^127\.0\.0\.1:/ || local ~ /^\[::1\]:/) bind="LOCALHOST"
+      else if (local ~ /^0\.0\.0\.0:/ || local ~ /^\[::\]:/ || local ~ /^\*:/) bind="PUBLIC"
+      else bind="IFACE"
+
+      # extract process name if present
+      pname="N/A"
+      if (match(proc, /users:\(\("([^"]+)"/, m)) pname=m[1]
+
+      # print
+      printf "  %-10s  %-6s  %s\n", bind, port, pname
+    }
+  ' | sort -u
+
+  echo
+  echo -e "${UYELLOW}PUBLIC${NC} = bound to 0.0.0.0/[::]/* (reachable from network)"
+  echo -e "${UYELLOW}LOCALHOST${NC} = bound to 127.0.0.1/[::1] (local only)"
+  echo
+}
+
 #main script
 main() {
   title "Network Summary"
@@ -232,6 +273,7 @@ main() {
   show_dns
   show_connectivity
   show_listening_ports
+  show_exposure_summary
 }
 #call main script
 main "$@"
