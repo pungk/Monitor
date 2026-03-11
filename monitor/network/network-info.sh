@@ -264,6 +264,53 @@ show_exposure_summary() {
   echo
 }
 
+
+show_firewall_status() {
+  section "Firewall Status"
+
+  if have_cmd ufw; then
+    echo -e "${BWHITE}${UWHITE}UFW${NC}:"
+    ufw status 2>/dev/null || echo "Unable to read ufw status"
+    echo
+
+  elif have_cmd firewall-cmd; then
+    echo -e "${BWHITE}${UWHITE}firewalld${NC}:"
+    firewall-cmd --state 2>/dev/null || echo "Unable to determine firewalld state"
+    echo
+
+    echo -e "${BWHITE}${UWHITE}Active zones${NC}:"
+    firewall-cmd --get-active-zones 2>/dev/null || echo "Unable to read active zones"
+    echo
+
+    echo -e "${BWHITE}${UWHITE}Allowed services${NC}:"
+    firewall-cmd --list-services 2>/dev/null || echo "Unable to read allowed services"
+    echo
+
+    echo -e "${BWHITE}${UWHITE}Allowed ports${NC}:"
+    firewall-cmd --list-ports 2>/dev/null || echo "Unable to read allowed ports"
+    echo
+
+  elif have_cmd nft; then
+    echo -e "${BWHITE}${UWHITE}nftables${NC}:"
+    nft list ruleset 2>/dev/null | sed -n '1,80p'
+    echo
+    echo -e "${UYELLOW}Note${NC}: showing first 80 lines only"
+    echo
+
+  elif have_cmd iptables; then
+    echo -e "${BWHITE}${UWHITE}iptables${NC}:"
+    iptables -S 2>/dev/null | sed -n '1,80p'
+    echo
+    echo -e "${UYELLOW}Note${NC}: showing first 80 lines only"
+    echo
+
+  else
+    echo "No supported firewall tool found (ufw / firewalld / nft / iptables)"
+    echo
+  fi
+}
+
+
 #main script
 main() {
   title "Network Summary"
@@ -274,6 +321,7 @@ main() {
   show_connectivity
   show_listening_ports
   show_exposure_summary
+  show_firewall_status
 }
 #call main script
 main "$@"
