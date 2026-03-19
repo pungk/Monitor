@@ -29,24 +29,43 @@ fi
 
 init_colors
 
+DOCKER_AVAILABLE=0
+DOCKER_DAEMON=0
+DOCKER_BIN=""
+
 # functions
+
+check_docker() {
+    if ! have_cmd docker; then
+        DOCKER_AVAILABLE=0
+        return
+    fi
+
+    DOCKER_AVAILABLE=1
+    DOCKER_BIN="$(command -v docker)"
+
+    if docker info >/dev/null 2>&1; then
+        DOCKER_DAEMON=1
+    else
+        DOCKER_DAEMON=0
+    fi
+}
+
 show_docker_status() {
     section "Docker Status"
 
-    if ! have_cmd docker; then
+    if [[ "$DOCKER_AVAILABLE" -eq 0 ]]; then
         echo "Docker is not installed"
         echo
         return
     fi
 
-    echo -e "${BWHITE}${UWHITE}Docker binary${NC}: $(command -v docker)"
+    echo -e "${BWHITE}${UWHITE}Docker binary${NC}: $DOCKER_BIN"
 
-    if docker info >/dev/null 2>&1; then
+    if [[ "$DOCKER_DAEMON" -eq 1 ]]; then
         echo -e "${GREEN}[OK]${NC} Docker daemon is reachable"
     else
         echo -e "${RED}[FAIL]${NC} Docker daemon is not reachable"
-        echo
-        return
     fi
 
     echo
@@ -55,13 +74,13 @@ show_docker_status() {
 show_running_containers() {
     section "Running Containers"
 
-    if ! have_cmd docker; then
+    if [[ "$DOCKER_AVAILABLE" -eq 0 ]]; then
         echo "Docker is not installed"
         echo
         return
     fi
 
-    if ! docker info >/dev/null 2>&1; then
+    if [[ "$DOCKER_DAEMON" -eq 0 ]]; then
         echo "Docker daemon is not reachable"
         echo
         return
@@ -85,6 +104,7 @@ show_running_containers() {
 # build main
 main() {
     title "Docker Summary"
+    check_docker
     show_docker_status
     show_running_containers    
 }
