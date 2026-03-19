@@ -18,7 +18,6 @@ if [[ ! -f "$COMMON_LIB" ]]; then
   exit 1
 fi
 
-#call common.sh
 # shellcheck disable=SC1090
 source "$COMMON_LIB"
 
