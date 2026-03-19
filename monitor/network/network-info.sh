@@ -31,6 +31,17 @@ fi
 
 init_colors
 
+#  Functions 
+show_interfaces() {
+  section "Interfaces (link state)"
+  if have_cmd ip; then
+    ip -br link
+  else
+    echo "N/A (missing: ip)"
+  fi
+  echo
+}
+
 get_primary_iface() {
   # interface used for default route (best guess)
   if have_cmd ip; then
@@ -381,11 +392,11 @@ main() {
   show_routes
   show_dns
   show_connectivity
+  show_listening_ports
   show_gateway_ping
   show_public_ip
-  show_interface_stats
-  show_listening_ports
   show_firewall_status
+  show_exposure_summary
 }
 #call main script
 main "$@"
