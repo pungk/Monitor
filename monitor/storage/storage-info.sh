@@ -27,9 +27,38 @@ fi
 init_colors
 
 
+# functions
+
+show_block_devices() {
+    section "Block Devices"
+
+    if have_cmd lsblk; then
+        lsblk -o NAME,SIZE,TYPE,FSTYPE,MOUNTPOINTS
+    else
+        echo "N/A (missing: lsblk)"
+    fi
+
+    echo
+}
+
+show_mounted_filesystems() {
+    section "Mounted Filesystems"
+
+    if have_cmd df; then
+        df -hT
+    else
+        echo "N/A (missing: df)"
+    fi
+
+    echo
+}
+
+
+# build main
 main() {
     title "Storage Summary"
     echo "starting script"
 }
 
+# call main
 main "$@"

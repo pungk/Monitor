@@ -385,7 +385,7 @@ show_interface_stats() {
   echo
 }
 
-#main script
+# build main
 main() {
   title "Network Summary"
   show_interfaces
@@ -400,5 +400,5 @@ main() {
   show_firewall_status
     show_interface_stats
 }
-#call main script
+# call main
 main "$@"
