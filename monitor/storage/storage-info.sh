@@ -116,14 +116,15 @@ show_top_space_consumers() {
     section "Top Space Consumers (/)"
 
     if have_cmd du && have_cmd sort && have_cmd head; then
-        echo -e "${BWHITE}${UWHITE}Largest directories under / (depth 1, same filesystem)${NC}:"
+        echo -e "${BWHITE}${UWHITE}Largest directories under / (depth 1)${NC}:"
 
         du -x -h --max-depth=1 / 2>/dev/null \
+            | grep -Ev '^/(proc|sys|run|dev|tmp)$' \
             | sort -hr \
             | head -n 10
 
         echo
-        echo -e "${UYELLOW}Note${NC}: restricted to the root filesystem only (-x)"
+        echo -e "${UYELLOW}Note${NC}: system directories excluded (proc, sys, run, dev, tmp)"
     else
         echo "N/A (missing: du / sort / head)"
         echo
