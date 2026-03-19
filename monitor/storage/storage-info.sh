@@ -88,7 +88,7 @@ show_physical_disks() {
         printf "%-12s %-10s %-8s %-8s %-40s\n" "Device" "Size" "Type" "Transport" "Model"
         printf "%-12s %-10s %-8s %-8s %-40s\n" "------" "----" "----" "---------" "-----"
 
-        lsblk -d -n -o NAME,SIZE,MODEL,ROTA,TRAN,TYPE | while read -r name size model rota tran dtype; do
+        lsblk -d -P -o NAME,SIZE,MODEL,ROTA,TRAN,TYPE | while read -r name size model rota tran dtype; do
             [[ "$dtype" != "disk" ]] && continue
 
             disk_type="Unknown"
