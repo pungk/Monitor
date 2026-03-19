@@ -4,8 +4,9 @@
 # Storage summary script
 # Author: costin.serbanoiu@gmail.com
 # Version: 1.0
-# Updated: 19 Feb 2026
+# Updated: 19 Mar 2026
 
+# Return non-zero if any command in a pipeline fails
 set -o pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
