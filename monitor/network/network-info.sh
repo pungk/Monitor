@@ -342,6 +342,41 @@ show_gateway_ping() {
   echo
 }
 
+show_public_ip() {
+  section "Public IP"
+
+  if ! have_cmd curl; then
+    echo "N/A (missing: curl)"
+    echo
+    return
+  fi
+
+  public_ip=""
+  public_ip_service=""
+
+  # Try a few providers with short timeouts
+  for service in \
+    "https://api.ipify.org" \
+    "https://ifconfig.me/ip" \
+    "https://icanhazip.com"
+  do
+    public_ip="$(curl -4 -s --max-time 3 --connect-timeout 2 "$service" 2>/dev/null | tr -d '[:space:]')"
+    if [[ -n "$public_ip" ]]; then
+      public_ip_service="$service"
+      break
+    fi
+  done
+
+  if [[ -n "$public_ip" ]]; then
+    echo -e "${BWHITE}${UWHITE}Public IPv4${NC}: $public_ip"
+    echo -e "${BWHITE}${UWHITE}Source${NC}: $public_ip_service"
+  else
+    echo -e "${RED}[FAIL]${NC} Could not determine public IPv4"
+  fi
+
+  echo
+}
+
 
 #main script
 main() {
@@ -353,6 +388,7 @@ main() {
   show_connectivity
   show_listening_ports
   show_gateway_ping
+  show_public_ip
   show_firewall_status
   show_exposure_summary
 }
