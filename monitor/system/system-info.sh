@@ -6,10 +6,7 @@
 # Version: 1.1
 # Updated: 08 Feb 2026
 
-#smarter error logging-if any command in a pipe fails it logs it 
-#not just the last pipe 
-#it returns exit status in $? (echo $?) (above 128)
-#to debug exitcode do "echo $(($?-128))" and then "trap -l" to list all signals
+# Return non-zero if any command in a pipeline fails
 set -o pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

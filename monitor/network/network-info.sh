@@ -6,10 +6,7 @@
 # Version: 0.1
 # Updated: 18 Feb 2026
 
-#smarter error logging-if any command in a pipe fails it logs it 
-#not just the last pipe 
-#it returns exit status in $? (echo $?) (above 128)
-#to debug exitcode do "echo $(($?-128))" and then "trap -l" to list all signals
+# Return non-zero if any command in a pipeline fails
 set -o pipefail
 
 #set common.sh location
@@ -22,6 +19,7 @@ if [[ ! -f "$COMMON_LIB" ]]; then
 fi
 
 #call common.sh
+# shellcheck disable=SC1090
 source "$COMMON_LIB"
 
 USE_COLOR=1
@@ -192,7 +190,9 @@ show_listening_ports() {
   elif have_cmd netstat; then
     netstat -tulnp 2>/dev/null
     echo
-    echo -e "${UYELLOW}Tip${NC}: Run as root for full process names/PIDs (netstat -p needs privileges)."
+      if [[ $EUID -ne 0 ]]; then
+        echo -e "${UYELLOW}Tip${NC}: Run as root for full process names/PIDs."
+      fi
   else
     echo "N/A (missing: ss or netstat)"
   fi
@@ -213,7 +213,7 @@ show_exposure_summary() {
   ss -tlnp 2>/dev/null | awk '
     NR==1 { next }  # skip header
     {
-      local=$4
+      laddr=$4
       proc=$0
 
       # extract port from local address (handles IPv6 [::]:443)
@@ -296,6 +296,7 @@ show_gateway_ping() {
     return
   fi
 
+  local gateway
   gateway=$(ip route show default 2>/dev/null | awk '{print $3; exit}')
 
   if [[ -z "$gateway" ]]; then
@@ -392,11 +393,12 @@ main() {
   show_routes
   show_dns
   show_connectivity
-  show_listening_ports
   show_gateway_ping
   show_public_ip
+  show_listening_ports
+  show_exposure_summary  
   show_firewall_status
-  show_exposure_summary
+    show_interface_stats
 }
 #call main script
 main "$@"
