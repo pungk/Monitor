@@ -131,6 +131,77 @@ show_top_space_consumers() {
     fi
 }
 
+show_inode_usage() {
+    section "Inode Usage"
+
+    if have_cmd df; then
+        local found=0
+
+        while read -r filesystem inodes iused ifree iuse mountpoint; do
+            iuse_num="${iuse%\%}"
+
+            if [[ "$iuse_num" -ge 90 ]]; then
+                echo -e "${RED}[CRITICAL]${NC} $mountpoint inode usage is ${iuse}"
+                found=1
+            elif [[ "$iuse_num" -ge 80 ]]; then
+                echo -e "${UYELLOW}[WARN]${NC} $mountpoint inode usage is ${iuse}"
+                found=1
+            fi
+        done < <(df -i --output=source,itotal,iused,iavail,pcent,target 2>/dev/null | tail -n +2)
+
+        if [[ "$found" -eq 0 ]]; then
+            echo -e "${GREEN}[OK]${NC} No inode exhaustion detected"
+        fi
+    else
+        echo "N/A (missing: df)"
+    fi
+
+    echo
+}
+
+show_smart_health() {
+    section "Disk Health (SMART)"
+
+    if [[ $EUID -ne 0 ]]; then
+        echo "Run as root to see SMART data"
+        echo
+        return
+    fi
+
+    if ! have_cmd smartctl; then
+        echo "N/A (missing: smartctl)"
+        echo
+        return
+    fi
+
+    if ! have_cmd lsblk; then
+        echo "N/A (missing: lsblk)"
+        echo
+        return
+    fi
+
+    lsblk -d -n -o NAME,TYPE | while read -r name type; do
+        [[ "$type" != "disk" ]] && continue
+
+        device="/dev/$name"
+
+        health=$(smartctl -H "$device" 2>/dev/null | grep -i "overall-health" | awk -F: '{print $2}' | xargs)
+
+        if [[ -z "$health" ]]; then
+            health="Unknown"
+        fi
+
+        if echo "$health" | grep -qi "PASSED"; then
+            echo -e "${GREEN}[OK]${NC} $device: $health"
+        else
+            echo -e "${RED}[WARN]${NC} $device: $health"
+        fi
+    done
+
+    echo
+}
+
+
 # build main
 main() {
     title "Storage Summary"
@@ -138,7 +209,9 @@ main() {
     show_mounted_filesystems
     show_usage_warnings 
     show_physical_disks
-    show_top_space_consumers   
+    show_top_space_consumers 
+    show_inode_usage
+    show_smart_health  
 }
 
 # call main
