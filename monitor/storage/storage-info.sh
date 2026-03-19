@@ -57,7 +57,8 @@ show_mounted_filesystems() {
 # build main
 main() {
     title "Storage Summary"
-    echo "starting script"
+    show_block_devices
+    show_mounted_filesystems    
 }
 
 # call main
