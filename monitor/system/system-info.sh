@@ -12,56 +12,33 @@
 #to debug exitcode do "echo $(($?-128))" and then "trap -l" to list all signals
 set -o pipefail
 
-# root check
-if [[ $EUID -ne 0 ]]; then
-    echo "ERROR: This script must be run with elevated priviledges."
-    echo
-    echo "Will exit now"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+COMMON_LIB="$SCRIPT_DIR/../common/common.sh"
+
+if [[ ! -f "$COMMON_LIB" ]]; then
+    echo "ERROR: Missing common library: $COMMON_LIB" >&2
     exit 1
 fi
 
-#use color by default
-USE_COLOR=1
+# shellcheck disable=SC1090
+source "$COMMON_LIB"
 
-#run script with --no-color option
+USE_COLOR=1
 if [[ "${1:-}" == "--no-color" ]]; then
     USE_COLOR=0
 fi
 
+init_colors
+require_root
 
-#setting text color options
-if [[ $USE_COLOR -eq 1 ]]; then
-    RED='\033[0;31m' #Red color text
-    GREEN='\033[0;32m' #Green color text
-    NC='\033[0m' # No Color
-    BWHITE='\033[1;37m' #Bold White text
-    UWHITE='\033[4;37m' #White underlined text
-    UYELLOW='\033[4;33m' #Yellow underlined text
-fi
-
-#create functions to make script quiet exit and check for path
-
-#check program exists
-have_cmd() {
-  command -v "$1" >/dev/null 2>&1
-}
-
-#if command does not exist print N/A and not hang
-safe_run() {
-  "$@" 2>/dev/null || echo "N/A"
-}
 
 #create get_primary_disk function
 get_primary_disk() {
     lsblk -dn -o NAME,TYPE 2>/dev/null | awk '$2=="disk"{print "/dev/"$1; exit}'
 }
 
-
-printf %"s\n"
-echo -e "${GREEN}Computer Summary${NC}"
-printf %"s\n"
-printf %"s\n"
-
+title "Computer Summary"
+echo
 #variables used for info
 
 #cpu_info
@@ -188,9 +165,7 @@ fi
 
 
 #CPU
-echo -e "${RED}CPU Info${NC}:"
-printf %"s\n"
-
+section "CPU Info"
 
 echo -e "${BWHITE}${UWHITE}Model${NC}: $cpu_model"
 

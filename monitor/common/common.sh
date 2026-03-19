@@ -52,8 +52,14 @@ warn() {
   echo -e "${UYELLOW}WARN${NC}: $*"
 }
 
+#check if run with root
 require_root() {
   if [[ $EUID -ne 0 ]]; then
     die "This script must be run with elevated privileges."
   fi
+}
+
+#if command does not exist print N/A and not hang
+safe_run() {
+  "$@" 2>/dev/null || echo "N/A"
 }
