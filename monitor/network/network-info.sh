@@ -310,6 +310,38 @@ show_firewall_status() {
   fi
 }
 
+show_gateway_ping() {
+  section "Gateway Connectivity"
+
+  if ! have_cmd ip; then
+    echo "N/A (missing: ip command)"
+    echo
+    return
+  fi
+
+  gateway=$(ip route show default 2>/dev/null | awk '{print $3; exit}')
+
+  if [[ -z "$gateway" ]]; then
+    echo "No default gateway detected"
+    echo
+    return
+  fi
+
+  echo -e "${BWHITE}${UWHITE}Default gateway${NC}: $gateway"
+
+  if have_cmd ping; then
+    if ping -c 1 -W 2 "$gateway" >/dev/null 2>&1; then
+      echo -e "  ${GREEN}[OK]${NC} Gateway reachable"
+    else
+      echo -e "  ${RED}[FAIL]${NC} Gateway unreachable"
+    fi
+  else
+    echo "Ping command not available"
+  fi
+
+  echo
+}
+
 
 #main script
 main() {
@@ -320,8 +352,9 @@ main() {
   show_dns
   show_connectivity
   show_listening_ports
-  show_exposure_summary
+  show_gateway_ping
   show_firewall_status
+  show_exposure_summary
 }
 #call main script
 main "$@"
