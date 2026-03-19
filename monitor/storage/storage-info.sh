@@ -67,7 +67,7 @@ show_usage_warnings() {
             if [[ "$usep_num" -ge 90 ]]; then
                 echo -e "${RED}[CRITICAL]${NC} $mountpoint is ${usep} used ($used / $size)"
                 found=1
-            elif [[ "$usep_num" -ge 80 ]]; then
+            elif [[ "$usep_num" -ge 10 ]]; then
                 echo -e "${UYELLOW}[WARN]${NC} $mountpoint is ${usep} used ($used / $size)"
                 found=1
             fi
