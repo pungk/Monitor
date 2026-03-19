@@ -81,13 +81,26 @@ show_usage_warnings() {
     echo
 }
 
+show_physical_disks() {
+    section "Physical Disks"
+
+    if have_cmd lsblk; then
+        lsblk -d -o NAME,SIZE,MODEL,ROTA,TRAN,TYPE
+    else
+        echo "N/A (missing: lsblk)"
+    fi
+
+    echo
+}
+
 
 # build main
 main() {
     title "Storage Summary"
     show_block_devices
     show_mounted_filesystems
-    show_usage_warnings    
+    show_usage_warnings 
+    show_physical_disks   
 }
 
 # call main
