@@ -3,7 +3,7 @@
 # network-info.sh
 # Network summary script (TUI-ready, modular)
 # Author: costin.serbanoiu@gmail.com
-# Version: 0.1
+# Version: 1.0
 # Updated: 18 Feb 2026
 
 # Return non-zero if any command in a pipeline fails

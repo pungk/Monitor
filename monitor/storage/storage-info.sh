@@ -3,7 +3,7 @@
 # storage-info.sh
 # Storage summary script
 # Author: costin.serbanoiu@gmail.com
-# Version: 0.1
+# Version: 1.0
 # Updated: 19 Feb 2026
 
 set -o pipefail
