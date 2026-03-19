@@ -85,24 +85,7 @@ show_physical_disks() {
     section "Physical Disks"
 
     if have_cmd lsblk; then
-        printf "%-12s %-10s %-8s %-8s %-40s\n" "Device" "Size" "Type" "Transport" "Model"
-        printf "%-12s %-10s %-8s %-8s %-40s\n" "------" "----" "----" "---------" "-----"
-
-        lsblk -d -n -o NAME,SIZE,MODEL,ROTA,TRAN,TYPE | while read -r name size model rota tran dtype; do
-            [[ "$dtype" != "disk" ]] && continue
-
-            disk_type="Unknown"
-            if [[ "$rota" == "0" ]]; then
-                disk_type="SSD"
-            elif [[ "$rota" == "1" ]]; then
-                disk_type="HDD"
-            fi
-
-            [[ -z "$tran" ]] && tran="N/A"
-            [[ -z "$model" ]] && model="N/A"
-
-            printf "%-12s %-10s %-8s %-8s %-40s\n" "$name" "$size" "$disk_type" "$tran" "$model"
-        done
+        lsblk -d -o NAME,SIZE,MODEL,ROTA,TRAN,TYPE
     else
         echo "N/A (missing: lsblk)"
     fi
