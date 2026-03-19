@@ -30,11 +30,63 @@ fi
 init_colors
 
 # functions
+show_docker_status() {
+    section "Docker Status"
+
+    if ! have_cmd docker; then
+        echo "Docker is not installed"
+        echo
+        return
+    fi
+
+    echo -e "${BWHITE}${UWHITE}Docker binary${NC}: $(command -v docker)"
+
+    if docker info >/dev/null 2>&1; then
+        echo -e "${GREEN}[OK]${NC} Docker daemon is reachable"
+    else
+        echo -e "${RED}[FAIL]${NC} Docker daemon is not reachable"
+        echo
+        return
+    fi
+
+    echo
+}
+
+show_running_containers() {
+    section "Running Containers"
+
+    if ! have_cmd docker; then
+        echo "Docker is not installed"
+        echo
+        return
+    fi
+
+    if ! docker info >/dev/null 2>&1; then
+        echo "Docker daemon is not reachable"
+        echo
+        return
+    fi
+
+    container_count=$(docker ps -q | wc -l)
+
+    echo -e "${BWHITE}${UWHITE}Running containers${NC}: $container_count"
+    echo
+
+    if [[ "$container_count" -eq 0 ]]; then
+        echo "No running containers"
+        echo
+        return
+    fi
+
+    docker ps --format "table {{.Names}}\t{{.Image}}\t{{.Status}}"
+    echo
+}
 
 # build main
 main() {
     title "Docker Summary"
-    echo "start script"
+    show_docker_status
+    show_running_containers    
 }
 
 # call main
