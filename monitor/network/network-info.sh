@@ -28,6 +28,7 @@ if [[ "${1:-}" == "--no-color" ]]; then
 fi
 
 init_colors
+require_root
 
 #  Functions 
 show_interfaces() {
