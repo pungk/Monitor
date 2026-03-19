@@ -377,6 +377,35 @@ show_public_ip() {
   echo
 }
 
+show_interface_stats() {
+  section "Interface Traffic Stats"
+
+  if [[ ! -r /proc/net/dev ]]; then
+    echo "N/A (/proc/net/dev not readable)"
+    echo
+    return
+  fi
+
+  printf "%-15s %-15s %-15s %-15s %-15s\n" "Interface" "RX_Bytes" "TX_Bytes" "RX_Packets" "TX_Packets"
+  printf "%-15s %-15s %-15s %-15s %-15s\n" "---------" "--------" "--------" "----------" "----------"
+
+  awk -F '[: ]+' '
+    NR > 2 {
+      iface=$2
+      rx_bytes=$3
+      rx_packets=$4
+      tx_bytes=$11
+      tx_packets=$12
+
+      # skip empty iface rows
+      if (iface != "") {
+        printf "%-15s %-15s %-15s %-15s %-15s\n", iface, rx_bytes, tx_bytes, rx_packets, tx_packets
+      }
+    }
+  ' /proc/net/dev
+
+  echo
+}
 
 #main script
 main() {
@@ -386,11 +415,11 @@ main() {
   show_routes
   show_dns
   show_connectivity
-  show_listening_ports
   show_gateway_ping
   show_public_ip
+  show_interface_stats
+  show_listening_ports
   show_firewall_status
-  show_exposure_summary
 }
 #call main script
 main "$@"
