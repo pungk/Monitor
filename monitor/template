@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 
-# docker-info.sh
-# Docker summary script
-# Author: costin.serbanoiu@gmail.com
-# Version: 0.1
-# Updated: 19 Mar 2026
+# script-name.sh
+# script info
+# Author: user@email.com
+# Version: x.x
+# Updated: date modified
 
 # Return non-zero if any command in a pipeline fails
 set -o pipefail
@@ -33,8 +33,7 @@ init_colors
 
 # build main
 main() {
-    title "Docker Summary"
-    echo "start script"
+    title "title"
 }
 
 # call main

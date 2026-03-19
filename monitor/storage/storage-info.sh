@@ -9,9 +9,11 @@
 # Return non-zero if any command in a pipeline fails
 set -o pipefail
 
+# use unified commands
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 COMMON_LIB="$SCRIPT_DIR/../common/common.sh"
 
+#check if lib is missing
 if [[ ! -f "$COMMON_LIB" ]]; then
     echo "ERROR: Missing common library: $COMMON_LIB" >&2
     exit 1
@@ -26,6 +28,7 @@ if [[ "${1:-}" == "--no-color" ]]; then
 fi
 
 init_colors
+require_root
 
 
 # functions
