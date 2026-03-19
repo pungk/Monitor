@@ -112,6 +112,23 @@ show_physical_disks() {
     echo
 }
 
+show_top_space_consumers() {
+    section "Top Space Consumers (/)"
+
+    if have_cmd du && have_cmd sort && have_cmd head; then
+        echo -e "${BWHITE}${UWHITE}Largest directories under / (depth 1, same filesystem)${NC}:"
+
+        du -x -h --max-depth=1 / 2>/dev/null \
+            | sort -hr \
+            | head -n 10
+
+        echo
+        echo -e "${UYELLOW}Note${NC}: restricted to the root filesystem only (-x)"
+    else
+        echo "N/A (missing: du / sort / head)"
+        echo
+    fi
+}
 
 # build main
 main() {
@@ -119,7 +136,8 @@ main() {
     show_block_devices
     show_mounted_filesystems
     show_usage_warnings 
-    show_physical_disks   
+    show_physical_disks
+    show_top_space_consumers   
 }
 
 # call main
