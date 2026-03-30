@@ -259,6 +259,56 @@ show_docker_networks() {
     echo
 }
 
+show_docker_volumes() {
+    section "Docker Volumes"
+
+    if [[ "$DOCKER_AVAILABLE" -eq 0 ]]; then
+        echo "Docker is not installed"
+        echo
+        return
+    fi
+
+    if [[ "$DOCKER_DAEMON" -eq 0 ]]; then
+        echo "Docker daemon is not reachable"
+        echo
+        return
+    fi
+
+    local volume_names
+    volume_names="$(docker volume ls --format "{{.Name}}" 2>/dev/null)"
+
+    if [[ -z "$volume_names" ]]; then
+        echo "No Docker volumes found"
+        echo
+        return
+    fi
+
+    echo -e "${BWHITE}${UWHITE}Defined volumes${NC}:"
+    printf "%-28s %-60s\n" "NAME" "MOUNTPOINT"
+    printf "%-28s %-60s\n" "----" "----------"
+
+    while read -r vol; do
+        [[ -z "$vol" ]] && continue
+        mountpoint="$(docker volume inspect "$vol" --format '{{.Mountpoint}}' 2>/dev/null)"
+        [[ -z "$mountpoint" ]] && mountpoint="Unknown"
+
+        printf "%-28s %-60s\n" "$vol" "$mountpoint"
+    done <<< "$volume_names"
+
+    echo
+    echo -e "${BWHITE}${UWHITE}Volume usage${NC}:"
+
+    while read -r vol; do
+        [[ -z "$vol" ]] && continue
+
+        containers="$(docker ps -a --filter volume="$vol" --format '{{.Names}}' 2>/dev/null | xargs)"
+        [[ -z "$containers" ]] && containers="None"
+
+        printf "%-28s %s\n" "$vol" "$containers"
+    done <<< "$volume_names"
+
+    echo
+}
 
 # build main
 main() {
@@ -269,6 +319,7 @@ main() {
     show_problem_containers   
     show_published_ports
     show_docker_networks
+    show_docker_volumes
 }
 
 # call main
