@@ -169,6 +169,49 @@ show_problem_containers() {
     fi
 }
 
+show_published_ports() {
+    section "Published Ports"
+
+    if [[ "$DOCKER_AVAILABLE" -eq 0 ]]; then
+        echo "Docker is not installed"
+        echo
+        return
+    fi
+
+    if [[ "$DOCKER_DAEMON" -eq 0 ]]; then
+        echo "Docker daemon is not reachable"
+        echo
+        return
+    fi
+
+    local port_output
+    port_output="$(docker ps --format "{{.Names}}\t{{.Image}}\t{{.Ports}}" 2>/dev/null)"
+
+    if [[ -z "$port_output" ]]; then
+        echo "No running containers"
+        echo
+        return
+    fi
+
+    # Filter only containers that actually publish ports
+    port_output="$(echo "$port_output" | awk -F'\t' '$3 != ""')"
+
+    if [[ -z "$port_output" ]]; then
+        echo "No published ports"
+        echo
+        return
+    fi
+
+    printf "%-22s %-30s %-40s\n" "CONTAINER" "IMAGE" "PORTS"
+    printf "%-22s %-30s %-40s\n" "---------" "-----" "-----"
+
+    while IFS=$'\t' read -r name image ports; do
+        printf "%-22s %-30s %-40s\n" "$name" "$image" "$ports"
+    done <<< "$port_output"
+
+    echo
+}
+
 # build main
 main() {
     title "Docker Summary"
@@ -176,6 +219,7 @@ main() {
     show_docker_status
     show_running_containers 
     show_problem_containers   
+    show_published_ports
 }
 
 # call main
