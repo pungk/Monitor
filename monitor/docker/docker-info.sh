@@ -310,6 +310,56 @@ show_docker_volumes() {
     echo
 }
 
+show_docker_images() {
+    section "Docker Images"
+
+    if [[ "$DOCKER_AVAILABLE" -eq 0 ]]; then
+        echo "Docker is not installed"
+        echo
+        return
+    fi
+
+    if [[ "$DOCKER_DAEMON" -eq 0 ]]; then
+        echo "Docker daemon is not reachable"
+        echo
+        return
+    fi
+
+    local image_output
+    local dangling_output
+
+    echo -e "${BWHITE}${UWHITE}Available images${NC}:"
+    image_output="$(docker images --format "{{.Repository}}\t{{.Tag}}\t{{.ID}}\t{{.Size}}" 2>/dev/null)"
+
+    if [[ -n "$image_output" ]]; then
+        printf "%-35s %-15s %-20s %-10s\n" "REPOSITORY" "TAG" "IMAGE ID" "SIZE"
+        printf "%-35s %-15s %-20s %-10s\n" "----------" "---" "--------" "----"
+
+        while IFS=$'\t' read -r repo tag id size; do
+            printf "%-35s %-15s %-20s %-10s\n" "$repo" "$tag" "$id" "$size"
+        done <<< "$image_output"
+    else
+        echo "No images found"
+    fi
+
+    echo
+    echo -e "${BWHITE}${UWHITE}Dangling images${NC}:"
+    dangling_output="$(docker images -f dangling=true --format "{{.Repository}}\t{{.Tag}}\t{{.ID}}\t{{.Size}}" 2>/dev/null)"
+
+    if [[ -n "$dangling_output" ]]; then
+        printf "%-35s %-15s %-20s %-10s\n" "REPOSITORY" "TAG" "IMAGE ID" "SIZE"
+        printf "%-35s %-15s %-20s %-10s\n" "----------" "---" "--------" "----"
+
+        while IFS=$'\t' read -r repo tag id size; do
+            printf "%-35s %-15s %-20s %-10s\n" "$repo" "$tag" "$id" "$size"
+        done <<< "$dangling_output"
+    else
+        echo "None"
+    fi
+
+    echo
+}
+
 # build main
 main() {
     title "Docker Summary"
@@ -320,6 +370,7 @@ main() {
     show_published_ports
     show_docker_networks
     show_docker_volumes
+    show_docker_images
 }
 
 # call main
