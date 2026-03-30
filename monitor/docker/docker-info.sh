@@ -101,12 +101,81 @@ show_running_containers() {
     echo
 }
 
+show_problem_containers() {
+    section "Problem Containers"
+
+    if [[ "$DOCKER_AVAILABLE" -eq 0 ]]; then
+        echo "Docker is not installed"
+        echo
+        return
+    fi
+
+    if [[ "$DOCKER_DAEMON" -eq 0 ]]; then
+        echo "Docker daemon is not reachable"
+        echo
+        return
+    fi
+
+    local found=0
+    local stopped_output
+    local unhealthy_output
+
+    echo -e "${BWHITE}${UWHITE}Stopped / non-running containers${NC}:"
+    stopped_output="$(docker ps -a \
+        --filter "status=exited" \
+        --filter "status=created" \
+        --filter "status=dead" \
+        --filter "status=restarting" \
+        --format "table {{.Names}}\t{{.Image}}\t{{.Status}}" 2>/dev/null)"
+
+    if [[ -n "$(echo "$stopped_output" | tail -n +2)" ]]; then
+        echo "$stopped_output"
+        found=1
+    else
+        echo "None"
+    fi
+
+    echo
+    echo -e "${BWHITE}${UWHITE}Unhealthy containers${NC}:"
+
+    unhealthy_output="$(docker ps \
+        --filter "health=unhealthy" \
+        --format "{{.Names}}\t{{.Image}}\t{{.Status}}" 2>/dev/null)"
+
+    if [[ -n "$unhealthy_output" ]]; then
+        printf "%-20s %-30s %-30s\n" "NAME" "IMAGE" "STATUS"
+        printf "%-20s %-30s %-30s\n" "----" "-----" "------"
+
+        while IFS=$'\t' read -r name image status; do
+            printf "%-20s %-30s %-30s\n" "$name" "$image" "$status"
+        done <<< "$unhealthy_output"
+
+        echo
+        echo -e "${UYELLOW}Hint${NC}: Check logs with:"
+        while IFS=$'\t' read -r name image status; do
+            echo "  docker logs $name"
+        done <<< "$unhealthy_output"
+
+        found=1
+    else
+        echo "None"
+    fi
+
+    echo
+
+    if [[ "$found" -eq 0 ]]; then
+        echo -e "${GREEN}[OK]${NC} No stopped or unhealthy containers detected"
+        echo
+    fi
+}
+
 # build main
 main() {
     title "Docker Summary"
     check_docker
     show_docker_status
-    show_running_containers    
+    show_running_containers 
+    show_problem_containers   
 }
 
 # call main
