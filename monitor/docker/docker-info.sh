@@ -212,6 +212,54 @@ show_published_ports() {
     echo
 }
 
+show_docker_networks() {
+    section "Docker Networks"
+
+    if [[ "$DOCKER_AVAILABLE" -eq 0 ]]; then
+        echo "Docker is not installed"
+        echo
+        return
+    fi
+
+    if [[ "$DOCKER_DAEMON" -eq 0 ]]; then
+        echo "Docker daemon is not reachable"
+        echo
+        return
+    fi
+
+    local network_output
+    network_output="$(docker network ls --format "{{.Name}}\t{{.Driver}}\t{{.Scope}}" 2>/dev/null)"
+
+    if [[ -z "$network_output" ]]; then
+        echo "No Docker networks found"
+        echo
+        return
+    fi
+
+    echo -e "${BWHITE}${UWHITE}Defined networks${NC}:"
+    printf "%-22s %-12s %-12s\n" "NAME" "DRIVER" "SCOPE"
+    printf "%-22s %-12s %-12s\n" "----" "------" "-----"
+
+    while IFS=$'\t' read -r name driver scope; do
+        printf "%-22s %-12s %-12s\n" "$name" "$driver" "$scope"
+    done <<< "$network_output"
+
+    echo
+    echo -e "${BWHITE}${UWHITE}Network membership${NC}:"
+
+    while IFS=$'\t' read -r name driver scope; do
+        containers="$(docker network inspect "$name" \
+            --format '{{range $id, $c := .Containers}}{{printf "%s " $c.Name}}{{end}}' 2>/dev/null | xargs)"
+
+        [[ -z "$containers" ]] && containers="None"
+
+        printf "%-22s %s\n" "$name" "$containers"
+    done <<< "$network_output"
+
+    echo
+}
+
+
 # build main
 main() {
     title "Docker Summary"
@@ -220,6 +268,7 @@ main() {
     show_running_containers 
     show_problem_containers   
     show_published_ports
+    show_docker_networks
 }
 
 # call main
